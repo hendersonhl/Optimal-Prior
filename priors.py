@@ -296,7 +296,7 @@ def sq_dev(parms, coeffs):
     assert np.shape(coeffs)[1] == 1, 'coeffs dimension issue'
     assert len(parms) == len(coeffs), 'len(parms) not equal to len(coeffs)'
     parms = np.asarray(parms)[:, np.newaxis]
-    sq_dev = np.sum((parms - coeffs)**2)
+    sq_dev = np.sum((parms[1] - coeffs[1])**2)
     assert type(sq_dev) == np.float64, 'sq_dev must be float'
     return sq_dev
 
@@ -359,14 +359,14 @@ if __name__ == "__main__":
     np.random.seed(123)
 
     # user inputs
-    T = 50 # sample sizes
+    T = 100 # sample sizes
     nreps = 10 # replications for each sample size
     parms = [1, -5, 2] # parameter values
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
     corr = False # correlated covariates
     sd = 2 # standard deviation on model noise
-    z = [-25, 0, 25] # support for parameters
+    z = [-20, 0, 20] # support for parameters
 
     # set-up
     K = len(parms) # number of covariates (including intercept)
