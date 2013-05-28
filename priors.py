@@ -360,13 +360,13 @@ if __name__ == "__main__":
 
     # user inputs
     T = 50 # sample sizes
-    nreps = 5 # replications for each sample size
+    nreps = 10 # replications for each sample size
     parms = [1, -5, 2] # parameter values
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
     corr = False # correlated covariates
     sd = 2 # standard deviation on model noise
-    z = [-20, 0, 20] # support for parameters
+    z = [-25, 0, 25] # support for parameters
 
     # set-up
     K = len(parms) # number of covariates (including intercept)
