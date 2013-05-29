@@ -18,3 +18,7 @@ Graphs/.DS_Store
 #model.lyx#
 
 *.lyx#
+
+*.png
+
+*.pdf
