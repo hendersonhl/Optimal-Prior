@@ -12,6 +12,15 @@ Key notation:
     z: Parameter support vector (M-by-1)
     v: Noise support vector (J-by-1)
     lmda: Lagrange multipliers (T-by-1)
+    
+Results needed:
+    (1) Average coefficients (good)
+    (2) Coefficient biases
+    (3) Coefficient variances
+    (3) Average squared error of coefficients (good)
+    (4) Sum of squared error of coefficients
+    (5) Objective function values (good)
+    (6) Least squares results
 
 """
 
@@ -23,7 +32,7 @@ from scipy.optimize import fmin
 
 
 class Prior(object):
-    def __init__(self, T, N, parms, a, b, corr, sd, z, x0):
+    def __init__(self, T, N, parms, a, b, corr, sd, z, x0, path):
         """Initializes Prior class."""
         K = len(parms) # number of covariates (including intercept)
         M = len(z) # number of parameter support points
@@ -32,8 +41,40 @@ class Prior(object):
         z = np.array(z)[:, np.newaxis]
         u = (1.0/J)*np.ones(T*J)[:, np.newaxis] # uniform prior on noise
         priors = self.priors(M)
-        self.coeffs, self.devs, self.ents = self.experiment(N, M, X, u, z, 
-            priors, parms, sd, x0)
+        # run experiment
+        coeffs, devs, ents = self.experiment(N, M, X, u, z, priors, parms, 
+            sd, x0)
+        data = np.hstack((coeffs, devs, ents))
+        self.out(path, T, K, data) # write results to file
+        
+    def out(self, path, T, K, data):
+        """Writes results to file. 
+        
+        Parameters
+        ----------
+        path : str
+            File path
+        T : int
+            Number of observations
+        K : int
+            Number of covariates (including intercept)
+        data : ndarray
+            Data to be written to file
+            
+        """
+        fname = path + 'out' + str(T) + '.csv'
+        b, sq_dev = [], []
+        with open(fname, 'w') as f:
+            # write header
+            for i in range(K):
+                b.append('b' + str(i))
+                sq_dev.append('sq_dev' + str(i))
+            header = b + sq_dev + ['ce_signal', 'ce_noise', 'ce_total']
+            f.write(','.join(header))
+            # write data
+            for i in data:
+                strdata = [str(j) for j in i]
+                f.write('\n' + ','.join(strdata))
         
     def experiment(self, N, M, X, u, z, priors, parms, sd, x0):
         """Returns experiment results.
@@ -424,7 +465,7 @@ if __name__ == "__main__":
 
     # user inputs
     T = 50 # sample sizes
-    N = 2 # replications for each sample size
+    N = 1 # replications for each sample size
     parms = [1, -5, 2] # parameter values
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
@@ -432,9 +473,10 @@ if __name__ == "__main__":
     sd = 2 # standard deviation on model noise
     z = [-20, 0, 20] # support for parameters
     x0 = np.zeros(T) # starting values
+    path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/'
     
     # initialize experiment
-    exp = Prior(T, N, parms, a, b, corr, sd, z, x0)
+    exp = Prior(T, N, parms, a, b, corr, sd, z, x0, path)
    
     # plot outcomes
     #plt.plot(exp.dev_reps, exp.ce_reps, 'ro')
