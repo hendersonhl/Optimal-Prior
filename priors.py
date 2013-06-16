@@ -13,21 +13,12 @@ Key notation:
     v: Noise support vector (J-by-1)
     lmda: Lagrange multipliers (T-by-1)
     
-Results needed:
-    (1) Average coefficients (good)
-    (2) Coefficient biases
-    (3) Coefficient variances
-    (3) Average squared error of coefficients (good)
-    (4) Sum of squared error of coefficients
-    (5) Objective function values (good)
-    (6) Least squares results
-
 """
 
 import numpy as np
 from itertools import permutations
 from scipy.misc import logsumexp
-from scipy.optimize import fmin
+from scipy.optimize import minimize
 #import matplotlib.pyplot as plt
 
 
@@ -37,46 +28,14 @@ class Prior(object):
         K = len(parms) # number of covariates (including intercept)
         M = len(z) # number of parameter support points
         J = len(z) # number of error support points
-        X = self.xdata(T, K, a, b, corr)
+        X = self.X = self.xdata(T, K, a, b, corr)
         z = np.array(z)[:, np.newaxis]
         u = (1.0/J)*np.ones(T*J)[:, np.newaxis] # uniform prior on noise
-        priors = self.priors(M)
+        priors = self.priors(M)     
         # run experiment
-        coeffs, devs, ents = self.experiment(N, M, X, u, z, priors, parms, 
-            sd, x0)
-        data = np.hstack((coeffs, devs, ents))
-        self.out(path, T, K, data) # write results to file
-        
-    def out(self, path, T, K, data):
-        """Writes results to file. 
-        
-        Parameters
-        ----------
-        path : str
-            File path
-        T : int
-            Number of observations
-        K : int
-            Number of covariates (including intercept)
-        data : ndarray
-            Data to be written to file
-            
-        """
-        fname = path + 'out' + str(T) + '.csv'
-        b, sq_dev = [], []
-        with open(fname, 'w') as f:
-            # write header
-            for i in range(K):
-                b.append('b' + str(i))
-                sq_dev.append('sq_dev' + str(i))
-            header = b + sq_dev + ['ce_signal', 'ce_noise', 'ce_total']
-            f.write(','.join(header))
-            # write data
-            for i in data:
-                strdata = [str(j) for j in i]
-                f.write('\n' + ','.join(strdata))
-        
-    def experiment(self, N, M, X, u, z, priors, parms, sd, x0):
+        self.experiment(N, M, X, u, z, priors, parms, sd, x0, corr, path) 
+                
+    def experiment(self, N, M, X, u, z, priors, parms, sd, x0, corr, path):
         """Returns experiment results.
         
         Parameters
@@ -99,31 +58,29 @@ class Prior(object):
             Standard deviation on noise to generate dependent variable
         x0 : ndarray
             Starting values
+        corr : bool
+            Correlated covariates
+        path : str
+            File path
             
         """
         assert type(N) == type(M) == int, 'N and M must be integers'
         assert np.shape(u)[1] == 1, 'u dimension issue'
         assert np.shape(z)[1] == 1, 'z dimension issue'
         assert type(sd) == int, 'sd must be integer'
-        coeffs = np.zeros((len(priors), np.shape(X)[1]))
-        devs = np.zeros((len(priors), np.shape(X)[1]))
-        ents = np.zeros((len(priors), 3))
+        T, K = np.shape(X)
         for i in range(N):
             print 'Enter replication {}'.format(i + 1)
-            y = self.ydata(X, parms, sd)
+            self.y = y = self.ydata(X, parms, sd)
             v = self.esupport(y, M)
             # define objective function as maximization of dual
             obj = lambda lmda, q: - self.dual(lmda, q, u, y, X, z, v) 
-            coeff, dev, ent = self.fit_model(obj, priors, x0, y, X, u, 
-                z, v, parms)  
-            coeff = np.vstack(tuple(coeff))
-            dev = np.vstack(tuple(dev))
-            ent = np.vstack(tuple(ent))
-            coeffs += coeff / N   # average outcomes 
-            devs += dev / N  
-            ents += ent / N   
+            coeff, ols, dev, ent = self.fit_model(obj, priors, x0, y, X, u, 
+                z, v, parms)     
+            data = np.hstack((np.vstack((priors)), np.vstack((coeff)), 
+                np.vstack((ols)), np.vstack((dev)), np.vstack((ent))))  
+            self.out(path, T, K, M, sd, corr, data) # write results to file 
             print 'Exit replication {}'.format(i + 1)
-        return coeffs, devs, ents
         
     def fit_model(self, obj, priors, x0, y, X, u, z, v, parms):
         """Minimizes dual objective function. 
@@ -158,25 +115,46 @@ class Prior(object):
         K = np.shape(X)[1]
         M = len(z)
         q = (1.0/M)*np.ones(K*M)[:, np.newaxis]
-        coeffs, devs, ents = [], [], []
+        coeffs, olss, devs, ents = [], [], [], []
         for prior in priors:
             print 'Estimating model with prior: {}'.format(prior)
             # introduce iteration-specific prior into q
             q[M: 2*M] = np.array(prior)[:, np.newaxis]
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
-            lmda = fmin(obj, x0, args=(q,), ftol=1e-10, disp=0)
-            assert np.isfinite(lmda).all() == True, 'lmda not finite'
+            result = minimize(obj, x0, args=(q,), method='NELDER-MEAD', 
+                tol=1e-12)
+            assert np.isfinite(result.x).all() == True, 'result.x not finite'
             # get results
-            pprob = self.pprobs(lmda, y, X, q, z)
-            wprob = self.wprobs(lmda, u, v, T)       
+            pprob = self.pprobs(result.x, y, X, q, z)
+            wprob = self.wprobs(result.x, u, v, T)       
             coeff = self.coeffs(pprob, z)
+            ols = self.ols(y, X)
             dev = self.sq_dev(parms, coeff.T)
             ent = self.ce(pprob, wprob, q, u)
             coeffs.append(coeff)
+            olss.append(ols)
             devs.append(dev)
             ents.append(ent)
-        return coeffs, devs, ents
+        return coeffs, olss, devs, ents
+        
+    def ols(self, y, X):
+        """Returns OLS estimates.
+        
+        Parameters
+        ----------
+        y : ndarray
+            Dependent variable
+        X : ndarray
+            Covariates
+            
+        """
+        assert np.shape(y)[1] == 1, 'y dimension issue' 
+        p1 = np.linalg.inv(np.dot(X.T, X))
+        p2 = np.dot(X.T, y)
+        ols = np.dot(p1, p2)       
+        assert np.isfinite(ols).all() == True, 'ols not finite'
+        return ols.T
 
     def dual(self, lmda, q, u, y, X, z, v):
         """Returns value of dual objective function.
@@ -220,11 +198,13 @@ class Prior(object):
         p2c = logsumexp(p2b, axis=1, b=np.reshape(q, (-1, M)))
         p2 = np.sum(p2c)  
         assert type(p2) == np.float64, 'p2 must be float'
+        assert np.isfinite(p2).all() == True, 'p2 not finite'
         p3a = np.dot(V.T, lmda) # TJ-by-1   
         p3b = np.reshape(p3a, (-1, J))
         p3c = logsumexp(p3b, axis=1, b=np.reshape(u, (-1, J)))
         p3 = np.sum(p3c)
         assert type(p3) == np.float64, 'p3 must be float'
+        assert np.isfinite(p3).all() == True, 'p3 not finite'
         return p1 - p2 - p3
         
     def ce(self, pprob, wprob, q, u):
@@ -232,9 +212,9 @@ class Prior(object):
     
         Parameters
         ----------
-        pprobs : ndarray
+        pprob : ndarray
             Probabilities on signal
-        wprobs : ndarray
+        wprob : ndarray
             Probabilities on noise
         q : ndarray
             Prior on signal 
@@ -285,11 +265,13 @@ class Prior(object):
         p1a = np.dot(Z.T, np.dot(X.T, lmda))
         p1b = np.exp(p1a)
         p1 = q * p1b
+        assert np.isfinite(p1).all() == True, 'p1 not finite'
         assert np.shape(p1) == (K*M, 1), 'p1 dimension issue'
         p2a = np.dot(ones_m, ones_m.T)
         p2b = np.kron(eye_k, p2a)
         p2 = np.dot(p2b, p1)
         assert np.shape(p2) == (K*M, 1), 'p2 dimension issue'
+        assert np.isfinite(p2).all() == True, 'p2 not finite'
         return p1 / p2  
     
     def wprobs(self, lmda, u, v, T):
@@ -319,10 +301,12 @@ class Prior(object):
         p1b = np.exp(p1a)
         p1 = u * p1b
         assert np.shape(p1) == (T*J, 1), 'p1 dimension issue'
+        assert np.isfinite(p1).all() == True, 'p1 not finite'
         p2a = np.dot(ones_j, ones_j.T)
         p2b = np.kron(eye_t, p2a)
         p2 = np.dot(p2b, p1)
         assert np.shape(p2) == (T*J, 1), 'p2 dimension issue'
+        assert np.isfinite(p2).all() == True, 'p2 not finite'
         return p1 / p2 
             
     def xdata(self, T, K, a, b, corr):
@@ -454,14 +438,56 @@ class Prior(object):
         assert len(parms) == len(coeffs), 'len(parms) not equal to len(coeffs)'
         parms = np.asarray(parms)[:, np.newaxis]        
         sq_dev = (parms - coeffs)**2
+        sq_dev = np.vstack((sq_dev, sq_dev.sum())) # add total squared dev.
         assert np.shape(sq_dev)[1] == 1, 'sq_dev dimension issue'
         return sq_dev.T 
-           
-
+ 
+    def out(self, path, T, K, M, sd, corr, data):
+        """Writes results to file. 
+        
+        Parameters
+        ----------
+        path : str
+            File path
+        T : int
+            Number of observations
+        K : int
+            Number of covariates (including intercept)
+        M : int
+            Number of error support points
+        sd : int
+            Standard deviation on noise to generate dependent variable
+        corr : bool
+            Correlated covariates
+        data : ndarray
+            Data to be written to file
+            
+        """
+        assert type(T) == type(K) == int, 'T and K must be integers'
+        assert type(M) == type(sd) == int, 'M and sd must be integers'
+        fname = path + 'out' + str(T) + str(sd) + str(int(corr)) + '.csv'
+        prior, b, ols, sq_dev = [], [], [], []
+        with open(fname, 'w') as f:
+            # write header
+            for i in range(M):
+                prior.append('prior' + str(i))
+            for i in range(K):
+                b.append('b' + str(i))
+                ols.append('ols' + str(i))
+                sq_dev.append('sq_dev' + str(i))
+            sq_dev.append('sq_dev')
+            ce = ['ce_signal', 'ce_noise', 'ce_total']    
+            header = prior + b + ols + sq_dev + ce
+            f.write(','.join(header))
+            # write data
+            for i in data:
+                strdata = [str(j) for j in i]
+                f.write('\n' + ','.join(strdata))
+                          
 if __name__ == "__main__":
 
     # set seed
-    np.random.seed(12345)
+    np.random.seed(123)
 
     # user inputs
     T = 50 # sample sizes
@@ -471,9 +497,9 @@ if __name__ == "__main__":
     b = 20 # upper bound on uniform dist. of covariates
     corr = False # correlated covariates
     sd = 2 # standard deviation on model noise
-    z = [-20, 0, 20] # support for parameters
+    z = [-25, 0, 25] # support for parameters
     x0 = np.zeros(T) # starting values
-    path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/'
+    path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
     
     # initialize experiment
     exp = Prior(T, N, parms, a, b, corr, sd, z, x0, path)
