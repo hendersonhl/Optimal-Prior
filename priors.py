@@ -122,11 +122,12 @@ class Prior(object):
             q[M: 2*M] = np.array(prior)[:, np.newaxis]
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
-            result = minimize(obj, x0, args=(q,), method='NELDER-MEAD', 
-                tol=1e-12)
+            self.result = result = minimize(obj, x0, args=(q,), 
+                method='BFGS', tol=1e-02)
+            assert result.success == 1, 'Optimization unsuccessful'
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
             # get results
-            pprob = self.pprobs(result.x, y, X, q, z)
+            pprob = self.pprob = self.pprobs(result.x, y, X, q, z)
             wprob = self.wprobs(result.x, u, v, T)       
             coeff = self.coeffs(pprob, z)
             ols = self.ols(y, X)
@@ -492,12 +493,12 @@ if __name__ == "__main__":
     # user inputs
     T = 50 # sample sizes
     N = 1 # replications for each sample size
-    parms = [1, -5, 2] # parameter values
+    parms = [1.0, -5.0, 2.0] # parameter values
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
     corr = False # correlated covariates
     sd = 2 # standard deviation on model noise
-    z = [-25, 0, 25] # support for parameters
+    z = [-200.0, 0, 200.0] # support for parameters
     x0 = np.zeros(T) # starting values
     path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
     
