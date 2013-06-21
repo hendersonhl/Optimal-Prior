@@ -71,7 +71,7 @@ class Prior(object):
         T, K = np.shape(X)
         for i in range(N):
             print 'Enter replication {}'.format(i + 1)
-            self.y = y = self.ydata(X, parms, sd)
+            y = self.y = self.ydata(X, parms, sd)
             v = self.esupport(y, M)
             # define objective function as maximization of dual
             obj = lambda lmda, q: - self.dual(lmda, q, u, y, X, z, v) 
@@ -122,12 +122,12 @@ class Prior(object):
             q[M: 2*M] = np.array(prior)[:, np.newaxis]
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
-            self.result = result = minimize(obj, x0, args=(q,), 
-                method='BFGS', tol=1e-02)
+            result = minimize(obj, x0, args=(q,), method='L-BFGS-B', 
+                tol=1e-15)
             assert result.success == 1, 'Optimization unsuccessful'
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
             # get results
-            pprob = self.pprob = self.pprobs(result.x, y, X, q, z)
+            pprob = self.pprobs(result.x, y, X, q, z)
             wprob = self.wprobs(result.x, u, v, T)       
             coeff = self.coeffs(pprob, z)
             ols = self.ols(y, X)
