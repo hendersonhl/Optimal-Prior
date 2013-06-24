@@ -19,7 +19,8 @@ import numpy as np
 from itertools import permutations
 from scipy.misc import logsumexp
 from scipy.optimize import minimize
-#import matplotlib.pyplot as plt
+import pandas as pd
+import matplotlib.pyplot as plt
 
 
 class Prior(object):
@@ -33,7 +34,9 @@ class Prior(object):
         u = (1.0/J)*np.ones(T*J)[:, np.newaxis] # uniform prior on noise
         priors = self.priors(M)     
         # run experiment
-        self.experiment(N, M, X, u, z, priors, parms, sd, x0, corr, path) 
+        self.experiment(N, M, X, u, z, priors, parms, sd, x0, corr, path)    
+        # get results
+        self.results(path, T, sd, corr)
                 
     def experiment(self, N, M, X, u, z, priors, parms, sd, x0, corr, path):
         """Returns experiment results.
@@ -79,7 +82,7 @@ class Prior(object):
                 z, v, parms)     
             data = np.hstack((np.vstack((priors)), np.vstack((coeff)), 
                 np.vstack((ols)), np.vstack((dev)), np.vstack((ent))))  
-            self.out(path, T, K, M, sd, corr, data) # write results to file 
+            self.out(path, T, K, M, sd, corr, data, i) # write results to file 
             print 'Exit replication {}'.format(i + 1)
         
     def fit_model(self, obj, priors, x0, y, X, u, z, v, parms):
@@ -122,10 +125,10 @@ class Prior(object):
             q[M: 2*M] = np.array(prior)[:, np.newaxis]
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
-            result = minimize(obj, x0, args=(q,), method='L-BFGS-B', 
-                tol=1e-15)
-            assert result.success == 1, 'Optimization unsuccessful'
+            result = minimize(obj, x0, args=(q,), method='L-BFGS-B', tol=1e-08, 
+                options={'maxfun':30000, 'maxiter':30000})
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
+            print result.message
             # get results
             pprob = self.pprobs(result.x, y, X, q, z)
             wprob = self.wprobs(result.x, u, v, T)       
@@ -443,7 +446,7 @@ class Prior(object):
         assert np.shape(sq_dev)[1] == 1, 'sq_dev dimension issue'
         return sq_dev.T 
  
-    def out(self, path, T, K, M, sd, corr, data):
+    def out(self, path, T, K, M, sd, corr, data, n):
         """Writes results to file. 
         
         Parameters
@@ -462,37 +465,75 @@ class Prior(object):
             Correlated covariates
         data : ndarray
             Data to be written to file
+        n : int
+            Replication number
             
         """
         assert type(T) == type(K) == int, 'T and K must be integers'
         assert type(M) == type(sd) == int, 'M and sd must be integers'
         fname = path + 'out' + str(T) + str(sd) + str(int(corr)) + '.csv'
-        prior, b, ols, sq_dev = [], [], [], []
-        with open(fname, 'w') as f:
-            # write header
-            for i in range(M):
-                prior.append('prior' + str(i))
-            for i in range(K):
-                b.append('b' + str(i))
-                ols.append('ols' + str(i))
-                sq_dev.append('sq_dev' + str(i))
-            sq_dev.append('sq_dev')
-            ce = ['ce_signal', 'ce_noise', 'ce_total']    
-            header = prior + b + ols + sq_dev + ce
-            f.write(','.join(header))
-            # write data
-            for i in data:
-                strdata = [str(j) for j in i]
-                f.write('\n' + ','.join(strdata))
+        prior, b, ols, sq_dev = [], [], [], []       
+        if n==0: # write header and data
+            with open(fname, 'w') as f:
+                # write header
+                for i in range(M):
+                    prior.append('prior' + str(i))
+                for i in range(K):
+                    b.append('b' + str(i))
+                    ols.append('ols' + str(i))
+                    sq_dev.append('sq_dev' + str(i))
+                sq_dev.append('sq_dev')
+                ce = ['ce_signal', 'ce_noise', 'ce_total']    
+                header = prior + b + ols + sq_dev + ce
+                f.write(','.join(header))
+                # write data
+                for i in data:
+                    strdata = [str(j) for j in i]
+                    f.write('\n' + ','.join(strdata))
+        else: # just write data
+            with open(fname, 'a') as f:
+                for i in data:
+                    strdata = [str(j) for j in i]
+                    f.write('\n' + ','.join(strdata))
+                    
+    def results(self, path, T, sd, corr):
+        """Creates post-simulation tables and graphs.
+        
+        Parameters
+        ----------
+        path : str
+            File path
+        T : int
+            Number of observations
+        sd : int
+            Standard deviation on noise to generate dependent variable
+        corr : bool
+            Correlated covariates
+        
+        """
+        data = path + 'out' + str(T) + str(sd) + str(int(corr)) + '.csv'
+        results = path + 'results' + str(T) + str(sd) + str(int(corr)) + '.csv'
+        figure = path + 'results' + str(T) + str(sd) + str(int(corr)) + '.png'
+        df = pd.read_csv(data) 
+        grouped = df.groupby(['prior0', 'prior1', 'prior2']) # group by prior 
+        means = grouped.agg(np.mean) # aggregate by means
+        means.to_csv(results) 
+        # plot results
+        plt.figure()
+        means.plot(x='sq_dev2', y='ce_total', style='ro')
+        plt.xlabel('Squared Deviation')
+        plt.ylabel('Cross Entropy')
+        plt.savefig(figure)
+                          
                           
 if __name__ == "__main__":
 
     # set seed
-    np.random.seed(123)
+    np.random.seed(12345)
 
     # user inputs
     T = 50 # sample sizes
-    N = 1 # replications for each sample size
+    N = 2 # replications for each sample size
     parms = [1.0, -5.0, 2.0] # parameter values
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
@@ -502,11 +543,6 @@ if __name__ == "__main__":
     x0 = np.zeros(T) # starting values
     path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
     
-    # initialize experiment
+    # run experiment
     exp = Prior(T, N, parms, a, b, corr, sd, z, x0, path)
-   
-    # plot outcomes
-    #plt.plot(exp.dev_reps, exp.ce_reps, 'ro')
-    #plt.xlabel('Squared Deviation')
-    #plt.ylabel('Cross Entropy')
-    #plt.show()
+
