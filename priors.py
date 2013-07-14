@@ -21,6 +21,7 @@ from scipy.misc import logsumexp
 from scipy.optimize import minimize
 import pandas as pd
 import matplotlib.pyplot as plt
+import time
 
 
 class Prior(object):
@@ -36,7 +37,7 @@ class Prior(object):
         # run experiment
         self.experiment(N, M, X, u, z, priors, parms, sd, x0, corr, path)    
         # get results
-        self.results(path, T, sd, corr)
+        self.results(path, T, sd, corr, parms)
                 
     def experiment(self, N, M, X, u, z, priors, parms, sd, x0, corr, path):
         """Returns experiment results.
@@ -74,16 +75,19 @@ class Prior(object):
         T, K = np.shape(X)
         for i in range(N):
             print 'Enter replication {}'.format(i + 1)
+            t0 = time.time()
             y = self.y = self.ydata(X, parms, sd)
             v = self.esupport(y, M)
             # define objective function as maximization of dual
             obj = lambda lmda, q: - self.dual(lmda, q, u, y, X, z, v) 
-            coeff, ols, dev, ent = self.fit_model(obj, priors, x0, y, X, u, 
-                z, v, parms)     
+            coeff, ols, dev_ent, dev_ols, ent = self.fit_model(obj, priors, x0, 
+                y, X, u, z, v, parms)     
             data = np.hstack((np.vstack((priors)), np.vstack((coeff)), 
-                np.vstack((ols)), np.vstack((dev)), np.vstack((ent))))  
+                np.vstack((ols)), np.vstack((dev_ent)), np.vstack((dev_ols)),
+                np.vstack((ent))))  
             self.out(path, T, K, M, sd, corr, data, i) # write results to file 
-            print 'Exit replication {}'.format(i + 1)
+            print 'Exit replication {0} ({1} seconds wall time)'.format(i + 1,
+                time.time() - t0 )
         
     def fit_model(self, obj, priors, x0, y, X, u, z, v, parms):
         """Minimizes dual objective function. 
@@ -118,7 +122,7 @@ class Prior(object):
         K = np.shape(X)[1]
         M = len(z)
         q = (1.0/M)*np.ones(K*M)[:, np.newaxis]
-        coeffs, olss, devs, ents = [], [], [], []
+        coeffs, olss, dev_ents, dev_olss, ents = [], [], [], [], []
         for prior in priors:
             print 'Estimating model with prior: {}'.format(prior)
             # introduce iteration-specific prior into q
@@ -129,18 +133,20 @@ class Prior(object):
                 options={'maxfun':30000, 'maxiter':30000})
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
             print result.message
-            # get results
+            # get output
             pprob = self.pprobs(result.x, y, X, q, z)
             wprob = self.wprobs(result.x, u, v, T)       
             coeff = self.coeffs(pprob, z)
             ols = self.ols(y, X)
-            dev = self.sq_dev(parms, coeff.T)
-            ent = self.ce(pprob, wprob, q, u)
+            dev_ent = self.sq_dev(parms, coeff.T)
+            dev_ols = self.sq_dev(parms, ols.T)
+            ent = self.ce(pprob, wprob, q, u)           
             coeffs.append(coeff)
-            olss.append(ols)
-            devs.append(dev)
+            olss.append(ols)           
+            dev_ents.append(dev_ent)
+            dev_olss.append(dev_ols)
             ents.append(ent)
-        return coeffs, olss, devs, ents
+        return coeffs, olss, dev_ents, dev_olss, ents
         
     def ols(self, y, X):
         """Returns OLS estimates.
@@ -472,7 +478,7 @@ class Prior(object):
         assert type(T) == type(K) == int, 'T and K must be integers'
         assert type(M) == type(sd) == int, 'M and sd must be integers'
         fname = path + 'out' + str(T) + str(sd) + str(int(corr)) + '.csv'
-        prior, b, ols, sq_dev = [], [], [], []       
+        prior, b, ols, dev_ent, dev_ols = [], [], [], [], []      
         if n==0: # write header and data
             with open(fname, 'w') as f:
                 # write header
@@ -481,10 +487,12 @@ class Prior(object):
                 for i in range(K):
                     b.append('b' + str(i))
                     ols.append('ols' + str(i))
-                    sq_dev.append('sq_dev' + str(i))
-                sq_dev.append('sq_dev')
+                    dev_ent.append('dev_ent' + str(i))
+                    dev_ols.append('dev_ols' + str(i))
+                dev_ent.append('dev_ent')
+                dev_ols.append('dev_ols')
                 ce = ['ce_signal', 'ce_noise', 'ce_total']    
-                header = prior + b + ols + sq_dev + ce
+                header = prior + b + ols + dev_ent + dev_ols + ce
                 f.write(','.join(header))
                 # write data
                 for i in data:
@@ -496,7 +504,7 @@ class Prior(object):
                     strdata = [str(j) for j in i]
                     f.write('\n' + ','.join(strdata))
                     
-    def results(self, path, T, sd, corr):
+    def results(self, path, T, sd, corr, parms):
         """Creates post-simulation tables and graphs.
         
         Parameters
@@ -509,31 +517,67 @@ class Prior(object):
             Standard deviation on noise to generate dependent variable
         corr : bool
             Correlated covariates
+        parms : ndarray
+            Model parameters
         
         """
         data = path + 'out' + str(T) + str(sd) + str(int(corr)) + '.csv'
-        results = path + 'results' + str(T) + str(sd) + str(int(corr)) + '.csv'
-        figure = path + 'results' + str(T) + str(sd) + str(int(corr)) + '.png'
+        mresults = path + 'mresults' + str(T) + str(sd) + str(int(corr)) + '.csv'
+        vresults = path + 'vresults' + str(T) + str(sd) + str(int(corr)) + '.csv'
+        figure = path + 'figure' + str(T) + str(sd) + str(int(corr))
         df = pd.read_csv(data) 
-        grouped = df.groupby(['prior0', 'prior1', 'prior2']) # group by prior 
+        # group by prior
+        prior = [i for i in df.columns if i.startswith('prior')]
+        grouped = df.groupby(prior) 
         means = grouped.agg(np.mean) # aggregate by means
-        means.to_csv(results) 
+        variances = grouped.agg(np.var) # aggregate by variances
+        # bias calculations 
+        for i in range(len(parms)): # for ce coefficients
+            bias_ent = 'bias_ent' + str(i)
+            b = 'b' + str(i)
+            means[bias_ent] = means[b] - parms[i]
+        for i in range(len(parms)): # for ols coefficients
+            bias_ols = 'bias_ols' + str(i)
+            ols = 'ols' + str(i)
+            means[bias_ols] = means[ols] - parms[i]
+        means.to_csv(mresults) # write to csv
+        variances.to_csv(vresults) # write to csv
         # plot results
-        plt.figure()
-        means.plot(x='sq_dev2', y='ce_total', style='ro')
-        plt.xlabel('Squared Deviation')
-        plt.ylabel('Cross Entropy')
-        plt.savefig(figure)
-                          
-                          
+        marker = ['b', 'g', 'r', 'y', 'k', 'w', '0.75'] 
+        lst = [('dev_ent','all'), ('dev_ent1','all'),('dev_ent','means'), 
+            ('dev_ent1','means')]  # one entry for each figure
+        for i in lst:
+            plt.figure()
+            counter = 0
+            for key, grp in grouped:                       
+                temp1 = [format(j, ".2f") for j in key] # two decimal places                 
+                temp2 = '({0}, {1}, {2})'.format(temp1[0], temp1[1], temp1[2])
+                if i[1]=='all':
+                    plt.scatter(grp[i[0]], grp['ce_total'], marker='o', 
+                        c=marker[counter], label=temp2)
+                else:
+                    plt.scatter(np.mean(grp[i[0]]), np.mean(grp['ce_total']), 
+                        marker='o', c=marker[counter], label=temp2)
+                counter +=1
+            plt.xlabel('Squared Deviation')
+            plt.ylabel('Cross Entropy')
+            lgd = plt.legend(scatterpoints=1, bbox_to_anchor=(1.35,1), 
+                fontsize='medium') 
+            if i[1]=='all':
+                plt.savefig(figure + '(' + i[0] + ')' + '(all)'+ '.png',
+                    bbox_extra_artists=(lgd,), bbox_inches='tight')
+            else: 
+                plt.savefig(figure + '(' + i[0] + ')' + '(means)'+ '.png',
+                    bbox_extra_artists=(lgd,), bbox_inches='tight')                        
+                                 
 if __name__ == "__main__":
 
     # set seed
     np.random.seed(12345)
 
     # user inputs
-    T = 50 # sample sizes
-    N = 2 # replications for each sample size
+    T = 50 # sample size: [10, 20, 50, 100, 250, 500]
+    N = 100 # replication number: [100, 1000, 5000]
     parms = [1.0, -5.0, 2.0] # parameter values
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
