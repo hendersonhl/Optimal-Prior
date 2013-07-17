@@ -129,7 +129,7 @@ class Prior(object):
             q[M: 2*M] = np.array(prior)[:, np.newaxis]
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
-            result = minimize(obj, x0, args=(q,), method='L-BFGS-B', tol=1e-08, 
+            result = minimize(obj, x0, args=(q,), method='L-BFGS-B', tol=1e-12, 
                 options={'maxfun':30000, 'maxiter':30000})
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
             print result.message
@@ -238,8 +238,8 @@ class Prior(object):
         assert np.shape(u)[1] == 1, 'u dimension issue'          
         assert len(pprob) == len(q), "len(pprob) not equal to len(q)"  
         assert len(wprob) == len(u), "len(wprob) not equal to len(u)"     
-        ce_signal = np.sum(pprob * np.log((pprob + 1e-08)/q))
-        ce_noise = np.sum(wprob * np.log((wprob + 1e-08)/u))
+        ce_signal = np.sum(pprob * np.log((pprob + 1e-10)/q))
+        ce_noise = np.sum(wprob * np.log((wprob + 1e-10)/u))
         ce_total = ce_signal + ce_noise
         assert type(ce_signal) == np.float64, 'ce_signal must be float'
         assert type(ce_noise) == np.float64, 'ce_noise must be float'
@@ -341,12 +341,12 @@ class Prior(object):
         assert b > a, 'a must be less than b'
         if not corr: # uncorrelated covariates
             X1 = np.random.uniform(a, b, size=(T, K - 1)) 
-            X = np.hstack((np.ones(T)[:, np.newaxis], X1)) # add intercept
+            X = self.X = np.hstack((np.ones(T)[:, np.newaxis], X1))
         else:  # correlated covariates
             assert K > 2, 'if corr==True, K must be greater than two'
             X1 = np.random.uniform(a, b, size=(T, K - 2)) 
             X2 = 2*X1[:,-1][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))
-            X = np.hstack((np.ones(T)[:, np.newaxis], X1, X2)) 
+            X = self.X = np.hstack((np.ones(T)[:, np.newaxis], X1, X2)) 
         assert np.shape(X) == (T, K), 'X dimension issue'
         return X
     
@@ -368,7 +368,7 @@ class Prior(object):
         T = np.shape(X)[0] # number of observations
         e = np.random.normal(0, sd, size=(T, 1)) # noise
         assert np.shape(X)[1] == np.shape(parms)[1], 'array shape mismatch'
-        y = np.dot(X, parms.T) + e
+        y = self.y = np.dot(X, parms.T) + e
         assert np.shape(y) == (T, 1), 'y dimension issue'
         return y
 
@@ -577,7 +577,7 @@ if __name__ == "__main__":
 
     # user inputs
     T = 50 # sample size: [10, 20, 50, 100, 250, 500]
-    N = 100 # replication number: [100, 1000, 5000]
+    N = 1 # replication number: [100, 1000, 5000]
     parms = [1.0, -5.0, 2.0] # parameter values
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
