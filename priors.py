@@ -18,6 +18,7 @@ Key notation:
 import numpy as np
 from itertools import permutations
 from scipy.misc import logsumexp
+from scipy.misc import factorial
 from scipy.optimize import minimize
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -129,7 +130,7 @@ class Prior(object):
             q[M: 2*M] = np.array(prior)[:, np.newaxis]
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
-            result = minimize(obj, x0, args=(q,), method='L-BFGS-B', tol=1e-12, 
+            result = minimize(obj, x0, args=(q,), method='L-BFGS-B', tol=1e-14, 
                 options={'maxfun':30000, 'maxiter':30000})
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
             print result.message
@@ -341,12 +342,12 @@ class Prior(object):
         assert b > a, 'a must be less than b'
         if not corr: # uncorrelated covariates
             X1 = np.random.uniform(a, b, size=(T, K - 1)) 
-            X = self.X = np.hstack((np.ones(T)[:, np.newaxis], X1))
+            X = np.hstack((np.ones(T)[:, np.newaxis], X1))
         else:  # correlated covariates
             assert K > 2, 'if corr==True, K must be greater than two'
             X1 = np.random.uniform(a, b, size=(T, K - 2)) 
             X2 = 2*X1[:,-1][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))
-            X = self.X = np.hstack((np.ones(T)[:, np.newaxis], X1, X2)) 
+            X = np.hstack((np.ones(T)[:, np.newaxis], X1, X2)) 
         assert np.shape(X) == (T, K), 'X dimension issue'
         return X
     
@@ -368,7 +369,7 @@ class Prior(object):
         T = np.shape(X)[0] # number of observations
         e = np.random.normal(0, sd, size=(T, 1)) # noise
         assert np.shape(X)[1] == np.shape(parms)[1], 'array shape mismatch'
-        y = self.y = np.dot(X, parms.T) + e
+        y = np.dot(X, parms.T) + e
         assert np.shape(y) == (T, 1), 'y dimension issue'
         return y
 
@@ -453,7 +454,7 @@ class Prior(object):
         return sq_dev.T 
  
     def out(self, path, T, K, M, sd, corr, data, n):
-        """Writes results to file. 
+        """Writes model output to file. 
         
         Parameters
         ----------
@@ -477,7 +478,8 @@ class Prior(object):
         """
         assert type(T) == type(K) == int, 'T and K must be integers'
         assert type(M) == type(sd) == int, 'M and sd must be integers'
-        fname = path + 'out' + str(T) + str(sd) + str(int(corr)) + '.csv'
+        nstr = str(T) + str(K) + str(sd) + str(int(corr))
+        fname = path + 'out' + nstr + '.csv'
         prior, b, ols, dev_ent, dev_ols = [], [], [], [], []      
         if n==0: # write header and data
             with open(fname, 'w') as f:
@@ -521,10 +523,13 @@ class Prior(object):
             Model parameters
         
         """
-        data = path + 'out' + str(T) + str(sd) + str(int(corr)) + '.csv'
-        mresults = path + 'mresults' + str(T) + str(sd) + str(int(corr)) + '.csv'
-        vresults = path + 'vresults' + str(T) + str(sd) + str(int(corr)) + '.csv'
-        figure = path + 'figure' + str(T) + str(sd) + str(int(corr))
+        assert type(T) == type(sd) == int, 'T and sd must be integers' 
+        K = len(parms)        
+        nstr = str(T) + str(K) + str(sd) + str(int(corr)) 
+        data = path + 'out' + nstr + '.csv'
+        mresults = path + 'mresults' + nstr + '.csv'
+        vresults = path + 'vresults' + nstr + '.csv'
+        figure = path + 'figure' + nstr
         df = pd.read_csv(data) 
         # group by prior
         prior = [i for i in df.columns if i.startswith('prior')]
@@ -532,26 +537,31 @@ class Prior(object):
         means = grouped.agg(np.mean) # aggregate by means
         variances = grouped.agg(np.var) # aggregate by variances
         # bias calculations 
-        for i in range(len(parms)): # for ce coefficients
+        for i in range(K): # for ce coefficients
             bias_ent = 'bias_ent' + str(i)
             b = 'b' + str(i)
             means[bias_ent] = means[b] - parms[i]
-        for i in range(len(parms)): # for ols coefficients
+        for i in range(K): # for ols coefficients
             bias_ols = 'bias_ols' + str(i)
             ols = 'ols' + str(i)
             means[bias_ols] = means[ols] - parms[i]
         means.to_csv(mresults) # write to csv
-        variances.to_csv(vresults) # write to csv
+        variances.to_csv(vresults) # write to csv          
         # plot results
-        marker = ['b', 'g', 'r', 'y', 'k', 'w', '0.75'] 
+        if len(prior)==3:
+            marker = ['b', 'g', 'r', 'c', 'y', 'k', 'w'] 
+        else:
+            npriors = int(factorial(len(prior)) + 1)
+            marker = [tuple(np.random.uniform(0, 1, size=(1, 3))[0]) 
+                for i in range(npriors)] # list of RGB tuples
         lst = [('dev_ent','all'), ('dev_ent1','all'),('dev_ent','means'), 
             ('dev_ent1','means')]  # one entry for each figure
         for i in lst:
             plt.figure()
             counter = 0
             for key, grp in grouped:                       
-                temp1 = [format(j, ".2f") for j in key] # two decimal places                 
-                temp2 = '({0}, {1}, {2})'.format(temp1[0], temp1[1], temp1[2])
+                temp1 = [round(j, 2) for j in key] # two decimal places               
+                temp2 = str(tuple(temp1))
                 if i[1]=='all':
                     plt.scatter(grp[i[0]], grp['ce_total'], marker='o', 
                         c=marker[counter], label=temp2)
@@ -577,7 +587,7 @@ if __name__ == "__main__":
 
     # user inputs
     T = 50 # sample size: [10, 20, 50, 100, 250, 500]
-    N = 1 # replication number: [100, 1000, 5000]
+    N = 10 # replication number: [100, 1000, 5000]
     parms = [1.0, -5.0, 2.0] # parameter values
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
