@@ -63,7 +63,7 @@ class Prior(object):
             Standard deviation on noise to generate dependent variable
         x0 : ndarray
             Starting values
-        corr : bool
+        corr : int
             Correlated covariates
         path : str
             File path
@@ -73,6 +73,7 @@ class Prior(object):
         assert np.shape(u)[1] == 1, 'u dimension issue'
         assert np.shape(z)[1] == 1, 'z dimension issue'
         assert type(sd) == int, 'sd must be integer'
+        assert corr==0 or corr==1 or corr==2, 'corr misspecified' 
         T, K = np.shape(X)
         for i in range(N):
             print 'Enter replication {}'.format(i + 1)
@@ -333,21 +334,28 @@ class Prior(object):
             Lower bound on uniform distribution
         b : int
             Upper bound on uniform distribution
-        corr : bool
+        corr : int
             Correlated covariates
     
         """
         assert T > 0 and K > 0, 'inputs must be non-negative'
         assert a >= 0 and b > 0, 'inputs must be non-negative'
         assert b > a, 'a must be less than b'
-        if not corr: # uncorrelated covariates
+        assert corr==0 or corr==1 or corr==2, 'corr misspecified'       
+        if corr==0: # uncorrelated covariates
             X1 = np.random.uniform(a, b, size=(T, K - 1)) 
             X = np.hstack((np.ones(T)[:, np.newaxis], X1))
-        else:  # correlated covariates
-            assert K > 2, 'if corr==True, K must be greater than two'
+        elif corr==1:  # one pair correlated
+            assert K > 2, 'if corr==1, K must be greater than two'
             X1 = np.random.uniform(a, b, size=(T, K - 2)) 
-            X2 = 2*X1[:,-1][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))
-            X = np.hstack((np.ones(T)[:, np.newaxis], X1, X2)) 
+            X2 = 2*X1[:,0][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))
+            X = np.hstack((np.ones(T)[:, np.newaxis], X1, X2))        
+        else: # two pairs correlated
+            assert K > 4, 'if corr==2, K must be greater than three'
+            X1 = np.random.uniform(a, b, size=(T, K - 3)) 
+            X2 = 2*X1[:,0][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))            
+            X3 = -3*X1[:,1][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))
+            X = np.hstack((np.ones(T)[:, np.newaxis], X1, X2, X3))  
         assert np.shape(X) == (T, K), 'X dimension issue'
         return X
     
@@ -468,7 +476,7 @@ class Prior(object):
             Number of error support points
         sd : int
             Standard deviation on noise to generate dependent variable
-        corr : bool
+        corr : int
             Correlated covariates
         data : ndarray
             Data to be written to file
@@ -478,7 +486,8 @@ class Prior(object):
         """
         assert type(T) == type(K) == int, 'T and K must be integers'
         assert type(M) == type(sd) == int, 'M and sd must be integers'
-        nstr = str(T) + str(K) + str(sd) + str(int(corr))
+        assert corr==0 or corr==1 or corr==2, 'corr misspecified' 
+        nstr = str(T) + str(K) + str(sd) + str(corr)
         fname = path + 'out' + nstr + '.csv'
         prior, b, ols, dev_ent, dev_ols = [], [], [], [], []      
         if n==0: # write header and data
@@ -517,7 +526,7 @@ class Prior(object):
             Number of observations
         sd : int
             Standard deviation on noise to generate dependent variable
-        corr : bool
+        corr : int
             Correlated covariates
         parms : ndarray
             Model parameters
@@ -525,7 +534,7 @@ class Prior(object):
         """
         assert type(T) == type(sd) == int, 'T and sd must be integers' 
         K = len(parms)        
-        nstr = str(T) + str(K) + str(sd) + str(int(corr)) 
+        nstr = str(T) + str(K) + str(sd) + str(corr) 
         data = path + 'out' + nstr + '.csv'
         mresults = path + 'mresults' + nstr + '.csv'
         vresults = path + 'vresults' + nstr + '.csv'
@@ -553,32 +562,31 @@ class Prior(object):
         else:
             npriors = int(factorial(len(prior)) + 1)
             marker = [tuple(np.random.uniform(0, 1, size=(1, 3))[0]) 
-                for i in range(npriors)] # list of RGB tuples
-        lst = [('dev_ent','all'), ('dev_ent1','all'),('dev_ent','means'), 
-            ('dev_ent1','means')]  # one entry for each figure
+                for i in range(npriors)] # list of RGB tuples  
+        lst = [('dev_ent','ce_total', 'all'),('dev_ent','ce_total','means'),
+            ('dev_ent1','ce_total','all'),('dev_ent1','ce_total','means'),
+            ('dev_ent','ce_signal', 'all'),('dev_ent','ce_signal','means'),
+            ('dev_ent1','ce_signal','all'),('dev_ent1','ce_signal','means')]
         for i in lst:
             plt.figure()
             counter = 0
             for key, grp in grouped:                       
                 temp1 = [round(j, 2) for j in key] # two decimal places               
                 temp2 = str(tuple(temp1))
-                if i[1]=='all':
-                    plt.scatter(grp[i[0]], grp['ce_total'], marker='o', 
+                if i[2]=='all':
+                    plt.scatter(grp[i[0]], grp[i[1]], marker='o', 
                         c=marker[counter], label=temp2)
                 else:
-                    plt.scatter(np.mean(grp[i[0]]), np.mean(grp['ce_total']), 
+                    plt.scatter(np.mean(grp[i[0]]), np.mean(grp[i[1]]), 
                         marker='o', c=marker[counter], label=temp2)
                 counter +=1
             plt.xlabel('Squared Deviation')
             plt.ylabel('Cross Entropy')
             lgd = plt.legend(scatterpoints=1, bbox_to_anchor=(1.35,1), 
                 fontsize='medium') 
-            if i[1]=='all':
-                plt.savefig(figure + '(' + i[0] + ')' + '(all)'+ '.png',
-                    bbox_extra_artists=(lgd,), bbox_inches='tight')
-            else: 
-                plt.savefig(figure + '(' + i[0] + ')' + '(means)'+ '.png',
-                    bbox_extra_artists=(lgd,), bbox_inches='tight')                        
+            plt.savefig(figure + '(' + i[0] + ')' + '(' + i[1] + ')' +
+                '(' + i[2] + ')' + '.png', bbox_extra_artists=(lgd,), 
+                bbox_inches='tight')                        
                                  
 if __name__ == "__main__":
 
@@ -588,10 +596,11 @@ if __name__ == "__main__":
     # user inputs
     T = 50 # sample size: [10, 20, 50, 100, 250, 500]
     N = 10 # replication number: [100, 1000, 5000]
-    parms = [1.0, -5.0, 2.0] # parameter values
+    #parms = [1.0, -5.0, 2.0] # parameter values
+    parms = [1.0, -5.0, 2.0, -3.0, 8.0, 6.0, -2.0, -7.0, 4.0, -1.0] 
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
-    corr = False # correlated covariates
+    corr = 2 # pairs of correlated covariates: [0, 1, 2]
     sd = 2 # standard deviation on model noise
     z = [-200.0, 0, 200.0] # support for parameters
     x0 = np.zeros(T) # starting values
