@@ -618,7 +618,7 @@ if __name__ == "__main__":
 
     # user inputs
     T = 50 # sample size: [10, 20, 50, 100, 250, 500]
-    N = 10 # replication number: [100, 1000, 5000]
+    N = 10 # number of replications: [100, 1000, 5000]
     parms = [1.0, -5.0, 2.0] # parameter values
     #parms = [1.0, -5.0, 2.0, -3.0, 8.0, 6.0, -2.0, -7.0, 4.0, -1.0] 
     a = 0 # lower bound on uniform dist. of covariates
