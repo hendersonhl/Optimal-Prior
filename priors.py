@@ -16,7 +16,7 @@ Key notation:
 """
 
 import numpy as np
-from itertools import permutations
+from itertools import permutations, product
 from scipy.misc import logsumexp
 from scipy.misc import factorial
 from scipy.optimize import minimize
@@ -26,7 +26,7 @@ import time
 
 
 class Prior(object):
-    def __init__(self, T, N, parms, a, b, corr, sd, z, x0, path):
+    def __init__(self, T, N, parms, a, b, corr, proc, sd, z, x0, path):
         """Initializes Prior class."""
         K = len(parms) # number of covariates (including intercept)
         M = len(z) # number of parameter support points
@@ -34,13 +34,13 @@ class Prior(object):
         X = self.X = self.xdata(T, K, a, b, corr)
         z = np.array(z)[:, np.newaxis]
         u = (1.0/J)*np.ones(T*J)[:, np.newaxis] # uniform prior on noise
-        priors = self.priors(M)     
+        priors = self.priors(M, proc)     
         # run experiment
-        self.experiment(N, M, X, u, z, priors, parms, sd, x0, corr, path)    
+        self.experiment(N, M, X, u, z, priors, parms, sd, x0, corr, proc, path)    
         # get results
-        self.results(path, T, sd, corr, parms)
+        self.results(path, T, sd, corr, parms, proc)
                 
-    def experiment(self, N, M, X, u, z, priors, parms, sd, x0, corr, path):
+    def experiment(self, N, M, X, u, z, priors, parms, sd, x0, corr, proc, path):
         """Returns experiment results.
         
         Parameters
@@ -65,15 +65,18 @@ class Prior(object):
             Starting values
         corr : int
             Correlated covariates
+        proc : int
+            Number of coefficients receiving prior procedure 
         path : str
             File path
-            
+        
         """
         assert type(N) == type(M) == int, 'N and M must be integers'
         assert np.shape(u)[1] == 1, 'u dimension issue'
         assert np.shape(z)[1] == 1, 'z dimension issue'
         assert type(sd) == int, 'sd must be integer'
         assert corr==0 or corr==1 or corr==2, 'corr misspecified' 
+        assert proc==1 or proc==2, 'proc is misspecified'
         T, K = np.shape(X)
         for i in range(N):
             print 'Enter replication {}'.format(i + 1)
@@ -83,15 +86,15 @@ class Prior(object):
             # define objective function as maximization of dual
             obj = lambda lmda, q: - self.dual(lmda, q, u, y, X, z, v) 
             coeff, ols, dev_ent, dev_ols, ent = self.fit_model(obj, priors, x0, 
-                y, X, u, z, v, parms)     
+                y, X, u, z, v, parms, proc)     
             data = np.hstack((np.vstack((priors)), np.vstack((coeff)), 
                 np.vstack((ols)), np.vstack((dev_ent)), np.vstack((dev_ols)),
                 np.vstack((ent))))  
-            self.out(path, T, K, M, sd, corr, data, i) # write results to file 
+            self.out(path, T, K, M, sd, corr, data, i, proc) # write results 
             print 'Exit replication {0} ({1} seconds wall time)'.format(i + 1,
                 time.time() - t0 )
         
-    def fit_model(self, obj, priors, x0, y, X, u, z, v, parms):
+    def fit_model(self, obj, priors, x0, y, X, u, z, v, parms, proc):
         """Minimizes dual objective function. 
     
         Parameters
@@ -113,22 +116,26 @@ class Prior(object):
         v : ndarray  
             Noise support vector  
         parms : ndarray
-            Model parameters       
+            Model parameters  
+        proc : int
+            Number of coefficients receiving prior procedure     
     
         """ 
         assert np.shape(y)[1] == 1, 'y dimension issue'  
         assert np.shape(u)[1] == 1, 'u dimension issue'
         assert np.shape(z)[1] == 1, 'z dimension issue'
         assert np.shape(v)[1] == 1, 'v dimension issue'
+        assert proc==1 or proc==2, 'proc is misspecified'
         T = len(y)
         K = np.shape(X)[1]
         M = len(z)
         q = (1.0/M)*np.ones(K*M)[:, np.newaxis]
         coeffs, olss, dev_ents, dev_olss, ents = [], [], [], [], []
         for prior in priors:
-            print 'Estimating model with prior: {}'.format(prior)
+            toprint = [round(e, 2) for e in prior]
+            print 'Estimating model with prior: {}'.format(toprint)
             # introduce iteration-specific prior into q
-            q[M: 2*M] = np.array(prior)[:, np.newaxis]
+            q[M: (proc + 1)*M] = np.array(prior)[:, np.newaxis]
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
             result = minimize(obj, x0, args=(q,), method='L-BFGS-B', tol=1e-14, 
@@ -351,10 +358,10 @@ class Prior(object):
             X2 = 2*X1[:,0][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))
             X = np.hstack((np.ones(T)[:, np.newaxis], X1, X2))        
         else: # two pairs correlated
-            assert K > 4, 'if corr==2, K must be greater than three'
+            assert K > 5, 'if corr==2, K must be greater than five'
             X1 = np.random.uniform(a, b, size=(T, K - 3)) 
             X2 = 2*X1[:,0][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))            
-            X3 = -3*X1[:,1][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))
+            X3 = -3*X1[:,2][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))
             X = np.hstack((np.ones(T)[:, np.newaxis], X1, X2, X3))  
         assert np.shape(X) == (T, K), 'X dimension issue'
         return X
@@ -381,17 +388,20 @@ class Prior(object):
         assert np.shape(y) == (T, 1), 'y dimension issue'
         return y
 
-    def priors(self, M):
+    def priors(self, M, proc):
         """Returns all possible priors.
     
         Parameters
         ----------
         M : int
             Number of support points
+        proc : int
+            Number of coefficients receiving prior procedure
         
         """
         assert M > 0, 'M must be greater than zero'
         assert type(M) == int, 'M must be an integer'
+        assert proc==1 or proc==2, 'proc is misspecified'
         seq = xrange(1, M + 1)
         prior = []
         for perm in permutations(seq, M):
@@ -399,6 +409,9 @@ class Prior(object):
             prior.append(np.asarray(perm)/normalization)
         # uniform prior last
         prior.append(np.ones(M) / M)
+        if proc==2: # conduct prior procedure on two coefficients
+            prod = product(prior, prior)
+            prior = [np.concatenate(i) for i in prod]
         return prior
 
     def esupport(self, y, M):
@@ -461,7 +474,7 @@ class Prior(object):
         assert np.shape(sq_dev)[1] == 1, 'sq_dev dimension issue'
         return sq_dev.T 
  
-    def out(self, path, T, K, M, sd, corr, data, n):
+    def out(self, path, T, K, M, sd, corr, data, n, proc):
         """Writes model output to file. 
         
         Parameters
@@ -482,18 +495,21 @@ class Prior(object):
             Data to be written to file
         n : int
             Replication number
+        proc : int
+            Number of coefficients receiving prior procedure 
             
         """
         assert type(T) == type(K) == int, 'T and K must be integers'
         assert type(M) == type(sd) == int, 'M and sd must be integers'
         assert corr==0 or corr==1 or corr==2, 'corr misspecified' 
-        nstr = str(T) + str(K) + str(sd) + str(corr)
+        assert proc==1 or proc==2, 'proc is misspecified'
+        nstr = str(T) + str(K) + str(sd) + str(corr) + str(proc)
         fname = path + 'out' + nstr + '.csv'
         prior, b, ols, dev_ent, dev_ols = [], [], [], [], []      
         if n==0: # write header and data
             with open(fname, 'w') as f:
                 # write header
-                for i in range(M):
+                for i in range(proc*M):
                     prior.append('prior' + str(i))
                 for i in range(K):
                     b.append('b' + str(i))
@@ -515,7 +531,7 @@ class Prior(object):
                     strdata = [str(j) for j in i]
                     f.write('\n' + ','.join(strdata))
                     
-    def results(self, path, T, sd, corr, parms):
+    def results(self, path, T, sd, corr, parms, proc):
         """Creates post-simulation tables and graphs.
         
         Parameters
@@ -530,11 +546,14 @@ class Prior(object):
             Correlated covariates
         parms : ndarray
             Model parameters
+        proc : int
+            Number of coefficients receiving prior procedure 
         
         """
         assert type(T) == type(sd) == int, 'T and sd must be integers' 
+        assert proc==1 or proc==2, 'proc is misspecified'
         K = len(parms)        
-        nstr = str(T) + str(K) + str(sd) + str(corr) 
+        nstr = str(T) + str(K) + str(sd) + str(corr) + str(proc)
         data = path + 'out' + nstr + '.csv'
         mresults = path + 'mresults' + nstr + '.csv'
         vresults = path + 'vresults' + nstr + '.csv'
@@ -582,8 +601,12 @@ class Prior(object):
                 counter +=1
             plt.xlabel('Squared Deviation')
             plt.ylabel('Cross Entropy')
-            lgd = plt.legend(scatterpoints=1, bbox_to_anchor=(1.35,1), 
-                fontsize='medium') 
+            if proc==1:
+                lgd = plt.legend(scatterpoints=1, bbox_to_anchor=(1.35,1), 
+                    fontsize='medium') 
+            else:
+                lgd = plt.legend(scatterpoints=1, bbox_to_anchor=(1.81,1), 
+                    fontsize='x-small', ncol=2) 
             plt.savefig(figure + '(' + i[0] + ')' + '(' + i[1] + ')' +
                 '(' + i[2] + ')' + '.png', bbox_extra_artists=(lgd,), 
                 bbox_inches='tight')                        
@@ -596,16 +619,17 @@ if __name__ == "__main__":
     # user inputs
     T = 50 # sample size: [10, 20, 50, 100, 250, 500]
     N = 10 # replication number: [100, 1000, 5000]
-    #parms = [1.0, -5.0, 2.0] # parameter values
-    parms = [1.0, -5.0, 2.0, -3.0, 8.0, 6.0, -2.0, -7.0, 4.0, -1.0] 
+    parms = [1.0, -5.0, 2.0] # parameter values
+    #parms = [1.0, -5.0, 2.0, -3.0, 8.0, 6.0, -2.0, -7.0, 4.0, -1.0] 
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
-    corr = 2 # pairs of correlated covariates: [0, 1, 2]
+    corr = 0 # pairs of correlated covariates: [0, 1, 2]
+    proc = 1 # number of coefficients receiving prior procedure: [1, 2]
     sd = 2 # standard deviation on model noise
     z = [-200.0, 0, 200.0] # support for parameters
     x0 = np.zeros(T) # starting values
     path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
     
     # run experiment
-    exp = Prior(T, N, parms, a, b, corr, sd, z, x0, path)
+    exp = Prior(T, N, parms, a, b, corr, proc, sd, z, x0, path)
 
