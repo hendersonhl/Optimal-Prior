@@ -31,7 +31,7 @@ class Prior(object):
         K = len(parms) # number of covariates (including intercept)
         M = len(z) # number of parameter support points
         J = len(z) # number of error support points
-        X = self.X = self.xdata(T, K, a, b, corr)
+        X = self.xdata(T, K, a, b, corr)
         z = np.array(z)[:, np.newaxis]
         u = (1.0/J)*np.ones(T*J)[:, np.newaxis] # uniform prior on noise
         priors = self.priors(M, proc)     
@@ -81,12 +81,14 @@ class Prior(object):
         for i in range(N):
             print 'Enter replication {}'.format(i + 1)
             t0 = time.time()
-            y = self.y = self.ydata(X, parms, sd)
+            y = self.ydata(X, parms, sd)
             v = self.esupport(y, M)
             # define objective function as maximization of dual
             obj = lambda lmda, q: - self.dual(lmda, q, u, y, X, z, v) 
-            coeff, ols, dev_ent, dev_ols, ent = self.fit_model(obj, priors, x0, 
-                y, X, u, z, v, parms, proc)     
+            # define Jacobian
+            jac = lambda lmda, q: self.jacobian(lmda, q, u, y, X, z, v)
+            coeff, ols, dev_ent, dev_ols, ent = self.fit_model(obj, jac, priors, 
+                x0, y, X, u, z, v, parms, proc)     
             data = np.hstack((np.vstack((priors)), np.vstack((coeff)), 
                 np.vstack((ols)), np.vstack((dev_ent)), np.vstack((dev_ols)),
                 np.vstack((ent))))  
@@ -94,13 +96,15 @@ class Prior(object):
             print 'Exit replication {0} ({1} seconds wall time)'.format(i + 1,
                 time.time() - t0 )
         
-    def fit_model(self, obj, priors, x0, y, X, u, z, v, parms, proc):
+    def fit_model(self, obj, jac, priors, x0, y, X, u, z, v, parms, proc):
         """Minimizes dual objective function. 
     
         Parameters
         ----------
         obj : callable func
             Objective function
+        jac : callable func
+            Jacobian of objective function
         priors : ndarray
             Possible priors
         x0 : ndarray
@@ -138,8 +142,8 @@ class Prior(object):
             q[M: (proc + 1)*M] = np.array(prior)[:, np.newaxis]
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
-            result = minimize(obj, x0, args=(q,), method='L-BFGS-B', tol=1e-14, 
-                options={'maxfun':30000, 'maxiter':30000})
+            result = minimize(obj, x0, args=(q,), method='L-BFGS-B', jac=None, 
+                tol=1e-14)
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
             print result.message
             # get output
@@ -226,6 +230,42 @@ class Prior(object):
         assert np.isfinite(p3).all() == True, 'p3 not finite'
         return p1 - p2 - p3
         
+    def jacobian(self, lmda, q, u, y, X, z, v):   
+        """Returns Jacobian of dual formulation.
+
+        Parameters
+        ----------
+        lmda: array
+            Lagrange multipliers           
+        q : ndarray
+            Prior on signal
+        u : ndarray
+            Prior on noise
+        y : ndarray
+            Dependent variable  
+        X : ndarray
+            Covariate matrix
+        z : ndarray
+            Parameter support vector
+        v : ndarray  
+            Noise support vector  
+
+        """
+        assert np.shape(q)[1] == 1, 'q dimension issue'
+        assert np.shape(u)[1] == 1, 'u dimension issue'
+        assert np.shape(y)[1] == 1, 'y dimension issue'
+        assert np.shape(z)[1] == 1, 'z dimension issue'
+        assert np.shape(v)[1] == 1, 'v dimension issue'
+        T = np.shape(X)[0]
+        K = np.shape(X)[1]      
+        eye_t = np.eye(T)
+        eye_k = np.eye(K)
+        Z = np.kron(eye_k, z.T)
+        V = np.kron(eye_t, v.T)
+        pprob = self.pprobs(lmda, y, X, q, z)
+        wprob = self.wprobs(lmda, u, v, T)
+        return np.squeeze(y - np.dot(np.dot(X, Z), pprob) - np.dot(V, wprob))
+              
     def ce(self, pprob, wprob, q, u):
         """Returns cross entropy.
     
@@ -617,7 +657,7 @@ if __name__ == "__main__":
     np.random.seed(12345)
 
     # user inputs
-    T = 50 # sample size: [10, 20, 50, 100, 250, 500]
+    T = 10 # sample size: [10, 20, 50, 100, 250, 500]
     N = 10 # number of replications: [100, 1000, 5000]
     parms = [1.0, -5.0, 2.0] # parameter values
     #parms = [1.0, -5.0, 2.0, -3.0, 8.0, 6.0, -2.0, -7.0, 4.0, -1.0] 
