@@ -142,7 +142,7 @@ class Prior(object):
             q[M: (proc + 1)*M] = np.array(prior)[:, np.newaxis]
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
-            result = minimize(obj, x0, args=(q,), method='L-BFGS-B', jac=None, 
+            result = minimize(obj, x0, args=(q,), method='L-BFGS-B', jac=jac, 
                 tol=1e-14)
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
             print result.message
@@ -322,8 +322,10 @@ class Prior(object):
         eye_k = np.eye(K)
         Z = np.kron(eye_k, z.T)
         p1a = np.dot(Z.T, np.dot(X.T, lmda))
-        p1b = np.exp(p1a)
-        p1 = q * p1b
+        p1b = logsumexp(p1a, axis=1, b=q)
+        p1 = np.exp(p1b)[:,np.newaxis]
+        #p1b = np.exp(p1a)
+        #p1 = q * p1b
         assert np.isfinite(p1).all() == True, 'p1 not finite'
         assert np.shape(p1) == (K*M, 1), 'p1 dimension issue'
         p2a = np.dot(ones_m, ones_m.T)
@@ -356,9 +358,11 @@ class Prior(object):
         ones_j = np.ones(J)[:, np.newaxis]
         eye_t = np.eye(T)
         V = np.kron(eye_t, v.T)
-        p1a = np.dot(V.T, lmda)
-        p1b = np.exp(p1a)
-        p1 = u * p1b
+        p1a = np.dot(V.T, lmda)        
+        p1b = logsumexp(p1a, axis=1, b=u)
+        p1 = np.exp(p1b)[:,np.newaxis]        
+        #p1b = np.exp(p1a)
+        #p1 = u * p1b
         assert np.shape(p1) == (T*J, 1), 'p1 dimension issue'
         assert np.isfinite(p1).all() == True, 'p1 not finite'
         p2a = np.dot(ones_j, ones_j.T)
@@ -658,7 +662,7 @@ if __name__ == "__main__":
 
     # user inputs
     T = 10 # sample size: [10, 20, 50, 100, 250, 500]
-    N = 10 # number of replications: [100, 1000, 5000]
+    N = 2 # number of replications: [100, 1000, 5000]
     parms = [1.0, -5.0, 2.0] # parameter values
     #parms = [1.0, -5.0, 2.0, -3.0, 8.0, 6.0, -2.0, -7.0, 4.0, -1.0] 
     a = 0 # lower bound on uniform dist. of covariates
