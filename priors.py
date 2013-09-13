@@ -4,7 +4,7 @@ Key notation:
     T: Number of observations
     K: Number of covariates (including intercept)
     M: Parameter support points
-    J: Error suppor points
+    J: Error support points
     y: Dependent variable (T-by-1)
     X: Covariate matix (T-by-K)
     q: Prior on signal (KM-by-1)
@@ -86,7 +86,7 @@ class Prior(object):
             # define objective function as maximization of dual
             obj = lambda lmda, q: - self.dual(lmda, q, u, y, X, z, v) 
             # define Jacobian
-            jac = lambda lmda, q: self.jacobian(lmda, q, u, y, X, z, v)
+            jac = lambda lmda, q: - self.jacobian(lmda, q, u, y, X, z, v)
             coeff, ols, dev_ent, dev_ols, ent = self.fit_model(obj, jac, priors, 
                 x0, y, X, u, z, v, parms, proc)     
             data = np.hstack((np.vstack((priors)), np.vstack((coeff)), 
@@ -143,11 +143,12 @@ class Prior(object):
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
             result = minimize(obj, x0, args=(q,), method='L-BFGS-B', jac=jac, 
-                tol=1e-14)
+                options={'ftol':1e-14, 'gtol':1e-14, 'maxiter':20000,
+                'maxcor':12})
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
             print result.message
             # get output
-            pprob = self.pprobs(result.x, y, X, q, z)
+            pprob = self.pprobs(result.x, X, q, z)
             wprob = self.wprobs(result.x, u, v, T)       
             coeff = self.coeffs(pprob, z)
             ols = self.ols(y, X)
@@ -262,7 +263,7 @@ class Prior(object):
         eye_k = np.eye(K)
         Z = np.kron(eye_k, z.T)
         V = np.kron(eye_t, v.T)
-        pprob = self.pprobs(lmda, y, X, q, z)
+        pprob = self.pprobs(lmda, X, q, z)
         wprob = self.wprobs(lmda, u, v, T)
         return np.squeeze(y - np.dot(np.dot(X, Z), pprob) - np.dot(V, wprob))
               
@@ -295,15 +296,13 @@ class Prior(object):
         assert type(ce_total) == np.float64, 'ce_total must be float'
         return np.array([[ce_signal, ce_noise, ce_total]])
 
-    def pprobs(self, lmda, y, X, q, z):
+    def pprobs(self, lmda, X, q, z):
         """Returns probabilities on signal.
     
         Parameters
         ----------
         lmda : ndarray
             Lagrange multipliers
-        y : ndarray
-            Dependent variable  
         X : ndarray
             Covariate matrix
         q : ndarray
@@ -312,28 +311,20 @@ class Prior(object):
             Parameter support vector 
     
         """
-        assert np.shape(y)[1] == 1, 'y dimension issue'
         assert np.shape(q)[1] == 1, 'q dimension issue'
         assert np.shape(z)[1] == 1, 'z dimension issue'
         lmda = lmda[:, np.newaxis]
         K = np.shape(X)[1]
         M = np.shape(z)[0]
-        ones_m = np.ones(M)[:, np.newaxis]
         eye_k = np.eye(K)
         Z = np.kron(eye_k, z.T)
-        p1a = np.dot(Z.T, np.dot(X.T, lmda))
-        p1b = logsumexp(p1a, axis=1, b=q)
-        p1 = np.exp(p1b)[:,np.newaxis]
-        #p1b = np.exp(p1a)
-        #p1 = q * p1b
-        assert np.isfinite(p1).all() == True, 'p1 not finite'
-        assert np.shape(p1) == (K*M, 1), 'p1 dimension issue'
-        p2a = np.dot(ones_m, ones_m.T)
-        p2b = np.kron(eye_k, p2a)
-        p2 = np.dot(p2b, p1)
-        assert np.shape(p2) == (K*M, 1), 'p2 dimension issue'
-        assert np.isfinite(p2).all() == True, 'p2 not finite'
-        return p1 / p2  
+        logprobs1 = np.log(q) + np.dot(Z.T, np.dot(X.T, lmda))
+        logprobs2 = logsumexp(logprobs1.reshape(K, M), axis=1)
+        logprobs3 = np.repeat(logprobs2, M)[:, np.newaxis]
+        probs = np.exp(logprobs1 - logprobs3)
+        assert np.isfinite(probs).all() == True, 'probs not finite'
+        assert np.shape(probs) == (K*M, 1), 'probs dimension issue'
+        return probs        
     
     def wprobs(self, lmda, u, v, T):
         """Returns probabilities on noise.
@@ -355,22 +346,15 @@ class Prior(object):
         assert type(T) == int, 'T must be integer'
         lmda = lmda[:, np.newaxis]
         J = np.shape(v)[0]
-        ones_j = np.ones(J)[:, np.newaxis]
         eye_t = np.eye(T)
-        V = np.kron(eye_t, v.T)
-        p1a = np.dot(V.T, lmda)        
-        p1b = logsumexp(p1a, axis=1, b=u)
-        p1 = np.exp(p1b)[:,np.newaxis]        
-        #p1b = np.exp(p1a)
-        #p1 = u * p1b
-        assert np.shape(p1) == (T*J, 1), 'p1 dimension issue'
-        assert np.isfinite(p1).all() == True, 'p1 not finite'
-        p2a = np.dot(ones_j, ones_j.T)
-        p2b = np.kron(eye_t, p2a)
-        p2 = np.dot(p2b, p1)
-        assert np.shape(p2) == (T*J, 1), 'p2 dimension issue'
-        assert np.isfinite(p2).all() == True, 'p2 not finite'
-        return p1 / p2 
+        V = np.kron(eye_t, v.T)     
+        logprobs1 = np.log(u) + np.dot(V.T, lmda)        
+        logprobs2 = logsumexp(logprobs1.reshape(T, J), axis=1)       
+        logprobs3 = np.repeat(logprobs2, J)[:, np.newaxis]
+        probs = np.exp(logprobs1 - logprobs3)
+        assert np.isfinite(probs).all() == True, 'probs not finite'
+        assert np.shape(probs) == (T*J, 1), 'probs dimension issue'
+        return probs
             
     def xdata(self, T, K, a, b, corr):
         """Returns covariate data.
