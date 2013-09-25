@@ -24,11 +24,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import time
 
-
 class Prior(object):
     def __init__(self, T, N, parms, a, b, corr, proc, sd, z, x0, path):
         """Initializes Prior class."""
-        K = len(parms) # number of covariates (including intercept)
+        K = len(parms[1]) # number of covariates (including intercept)
         M = len(z) # number of parameter support points
         J = len(z) # number of error support points
         X = self.xdata(T, K, a, b, corr)
@@ -57,7 +56,7 @@ class Prior(object):
             Parameter support vector
         priors : ndarray
             Possible priors
-        parms : ndarray
+        parms : tuple
             Model parameters
         sd : int
             Standard deviation on noise to generate dependent variable
@@ -81,18 +80,18 @@ class Prior(object):
         for i in range(N):
             print 'Enter replication {}'.format(i + 1)
             t0 = time.time()
-            y = self.ydata(X, parms, sd)
+            y = self.ydata(X, parms[1], sd)
             v = self.esupport(y, M)
             # define objective function as maximization of dual
             obj = lambda lmda, q: - self.dual(lmda, q, u, y, X, z, v) 
             # define Jacobian
             jac = lambda lmda, q: - self.jacobian(lmda, q, u, y, X, z, v)
-            coeff, ols, dev_ent, dev_ols, ent = self.fit_model(obj, jac, priors, 
-                x0, y, X, u, z, v, parms, proc)     
+            coeff, ols, dev_ent, dev_ols, ent, success = self.fit_model(obj, 
+                jac, priors, x0, y, X, u, z, v, parms[1], proc)   
             data = np.hstack((np.vstack((priors)), np.vstack((coeff)), 
-                np.vstack((ols)), np.vstack((dev_ent)), np.vstack((dev_ols)),
-                np.vstack((ent))))  
-            self.out(path, T, K, M, sd, corr, data, i, proc) # write results 
+                np.vstack((ols)), np.vstack((dev_ent)), np.vstack((dev_ols)), 
+                np.vstack((ent)),np.vstack((success))))  
+            self.out(path, T, M, parms, sd, corr, data, i, proc) # write results 
             print 'Exit replication {0} ({1} seconds wall time)'.format(i + 1,
                 time.time() - t0 )
         
@@ -119,7 +118,7 @@ class Prior(object):
             Parameter support vector
         v : ndarray  
             Noise support vector  
-        parms : ndarray
+        parms : list
             Model parameters  
         proc : int
             Number of coefficients receiving prior procedure     
@@ -134,7 +133,7 @@ class Prior(object):
         K = np.shape(X)[1]
         M = len(z)
         q = (1.0/M)*np.ones(K*M)[:, np.newaxis]
-        coeffs, olss, dev_ents, dev_olss, ents = [], [], [], [], []
+        coeffs, olss, dev_ents, dev_olss, ents, success = [],[],[],[],[],[]
         for prior in priors:
             toprint = [round(e, 2) for e in prior]
             print 'Estimating model with prior: {}'.format(toprint)
@@ -146,7 +145,7 @@ class Prior(object):
                 options={'ftol':1e-14, 'gtol':1e-14, 'maxiter':20000,
                 'maxcor':12})
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
-            print result.message
+            print 'Optimizer exited successfully: {}'.format(result.success)
             # get output
             pprob = self.pprobs(result.x, X, q, z)
             wprob = self.wprobs(result.x, u, v, T)       
@@ -160,7 +159,8 @@ class Prior(object):
             dev_ents.append(dev_ent)
             dev_olss.append(dev_ols)
             ents.append(ent)
-        return coeffs, olss, dev_ents, dev_olss, ents
+            success.append(int(result.success))
+        return coeffs, olss, dev_ents, dev_olss, ents, success
         
     def ols(self, y, X):
         """Returns OLS estimates.
@@ -401,7 +401,7 @@ class Prior(object):
         ----------
         X : ndarray
             Covariates
-        parms : ndarray
+        parms : list
             Model parameters
         sd : int
             Standard deviation on noise
@@ -487,7 +487,7 @@ class Prior(object):
         
         Parameters
         ----------
-        parms : ndarray
+        parms : list
             Model parameters
         coeffs : ndarray
             Estimated coefficients
@@ -502,7 +502,7 @@ class Prior(object):
         assert np.shape(sq_dev)[1] == 1, 'sq_dev dimension issue'
         return sq_dev.T 
  
-    def out(self, path, T, K, M, sd, corr, data, n, proc):
+    def out(self, path, T, M, parms, sd, corr, data, n, proc):
         """Writes model output to file. 
         
         Parameters
@@ -511,10 +511,10 @@ class Prior(object):
             File path
         T : int
             Number of observations
-        K : int
-            Number of covariates (including intercept)
         M : int
             Number of error support points
+        parms : tuple
+            Model parameters
         sd : int
             Standard deviation on noise to generate dependent variable
         corr : int
@@ -527,19 +527,18 @@ class Prior(object):
             Number of coefficients receiving prior procedure 
             
         """
-        assert type(T) == type(K) == int, 'T and K must be integers'
-        assert type(M) == type(sd) == int, 'M and sd must be integers'
+        assert type(T)==type(M)==type(sd)==int, 'T, M, and sd must be integers'
         assert corr==0 or corr==1 or corr==2, 'corr misspecified' 
         assert proc==1 or proc==2, 'proc is misspecified'
-        nstr = str(T) + str(K) + str(sd) + str(corr) + str(proc)
-        fname = path + 'out' + nstr + '.csv'
-        prior, b, ols, dev_ent, dev_ols = [], [], [], [], []      
+        nstr = str(parms[0]) + str(T) + str(sd) + str(corr) + str(proc)
+        fname = path + nstr + 'out' + '.csv'
+        prior, b, ols, dev_ent, dev_ols = [], [], [], [], []  
         if n==0: # write header and data
             with open(fname, 'w') as f:
                 # write header
                 for i in range(proc*M):
                     prior.append('prior' + str(i))
-                for i in range(K):
+                for i in range(len(parms[1])):
                     b.append('b' + str(i))
                     ols.append('ols' + str(i))
                     dev_ent.append('dev_ent' + str(i))
@@ -547,7 +546,7 @@ class Prior(object):
                 dev_ent.append('dev_ent')
                 dev_ols.append('dev_ols')
                 ce = ['ce_signal', 'ce_noise', 'ce_total']    
-                header = prior + b + ols + dev_ent + dev_ols + ce
+                header = prior + b + ols + dev_ent + dev_ols + ce + ['success']
                 f.write(','.join(header))
                 # write data
                 for i in data:
@@ -572,35 +571,35 @@ class Prior(object):
             Standard deviation on noise to generate dependent variable
         corr : int
             Correlated covariates
-        parms : ndarray
+        parms : tuple
             Model parameters
         proc : int
             Number of coefficients receiving prior procedure 
         
         """
         assert type(T) == type(sd) == int, 'T and sd must be integers' 
-        assert proc==1 or proc==2, 'proc is misspecified'
-        K = len(parms)        
-        nstr = str(T) + str(K) + str(sd) + str(corr) + str(proc)
-        data = path + 'out' + nstr + '.csv'
-        mresults = path + 'mresults' + nstr + '.csv'
-        vresults = path + 'vresults' + nstr + '.csv'
-        figure = path + 'figure' + nstr
-        df = pd.read_csv(data) 
+        assert proc==1 or proc==2, 'proc is misspecified'    
+        nstr = str(parms[0]) + str(T) + str(sd) + str(corr) + str(proc)
+        data = path + nstr + 'out'  + '.csv'
+        mresults = path + nstr + 'mresults' + '.csv'
+        vresults = path + nstr + 'vresults' + '.csv'
+        figure = path + nstr + 'figure' 
+        df_raw = pd.read_csv(data) 
+        df = df_raw[df_raw['success']==1] # delete unsuccessful entries
         # group by prior
         prior = [i for i in df.columns if i.startswith('prior')]
         grouped = df.groupby(prior) 
         means = grouped.agg(np.mean) # aggregate by means
         variances = grouped.agg(np.var) # aggregate by variances
         # bias calculations 
-        for i in range(K): # for ce coefficients
+        for i in range(len(parms[1])): # for ce coefficients
             bias_ent = 'bias_ent' + str(i)
             b = 'b' + str(i)
-            means[bias_ent] = means[b] - parms[i]
-        for i in range(K): # for ols coefficients
+            means[bias_ent] = means[b] - parms[1][i]
+        for i in range(len(parms[1])): # for ols coefficients
             bias_ols = 'bias_ols' + str(i)
             ols = 'ols' + str(i)
-            means[bias_ols] = means[ols] - parms[i]
+            means[bias_ols] = means[ols] - parms[1][i]
         means.to_csv(mresults) # write to csv
         variances.to_csv(vresults) # write to csv          
         # plot results
@@ -645,16 +644,21 @@ if __name__ == "__main__":
     np.random.seed(12345)
 
     # user inputs
-    T = 10 # sample size: [10, 20, 50, 100, 250, 500]
+    T = 50 # sample size: [10, 20, 50, 100, 500]
     N = 2 # number of replications: [100, 1000, 5000]
-    parms = [1.0, -5.0, 2.0] # parameter values
-    #parms = [1.0, -5.0, 2.0, -3.0, 8.0, 6.0, -2.0, -7.0, 4.0, -1.0] 
+    parms_menu = [(0, [1., -5., 2.]),
+                  (1, [1., -50., 2.]),
+                  (2, [10., -50., 20.]),
+                  (3, [1., -5., 2., -3., 8., 6., -2., -7., 4., -1.]),
+                  (4, [1., -50., 20., -3., 8., 6., -2., -7., 4., -1.]), 
+                  (5, [10., -50., 20., -30., 80., 60., -20., -70., 40., -10.])]
+    parms = parms_menu[1] # parameters values
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
     corr = 0 # pairs of correlated covariates: [0, 1, 2]
     proc = 1 # number of coefficients receiving prior procedure: [1, 2]
-    sd = 2 # standard deviation on model noise
-    z = [-200.0, 0, 200.0] # support for parameters
+    sd = 5 # standard deviation on model noise
+    z = [-200., 0., 200.] # support for parameters
     x0 = np.zeros(T) # starting values
     path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
     
