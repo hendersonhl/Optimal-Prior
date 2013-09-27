@@ -603,40 +603,48 @@ class Prior(object):
         means.to_csv(mresults) # write to csv
         variances.to_csv(vresults) # write to csv          
         # plot results
-        if len(prior)==3:
-            marker = ['b', 'g', 'r', 'c', 'y', 'k', 'w'] 
-        else:
-            npriors = int(factorial(len(prior)) + 1)
-            marker = [tuple(np.random.uniform(0, 1, size=(1, 3))[0]) 
-                for i in range(npriors)] # list of RGB tuples  
         lst = [('dev_ent','ce_total', 'all'),('dev_ent','ce_total','means'),
             ('dev_ent1','ce_total','all'),('dev_ent1','ce_total','means'),
             ('dev_ent','ce_signal', 'all'),('dev_ent','ce_signal','means'),
             ('dev_ent1','ce_signal','all'),('dev_ent1','ce_signal','means')]
+        npriors = int(factorial(len(prior)) + 1)
+        marker = [tuple(np.random.uniform(0, 1, size=(1, 3))[0]) 
+            for i in range(npriors)] # list of RGB tuples   
         for i in lst:
             plt.figure()
-            counter = 0
-            for key, grp in grouped:                       
-                temp1 = [round(j, 2) for j in key] # two decimal places               
-                temp2 = str(tuple(temp1))
-                if i[2]=='all':
-                    plt.scatter(grp[i[0]], grp[i[1]], marker='o', 
-                        c=marker[counter], label=temp2)
-                else:
-                    plt.scatter(np.mean(grp[i[0]]), np.mean(grp[i[1]]), 
-                        marker='o', c=marker[counter], label=temp2)
-                counter +=1
             plt.xlabel('Squared Deviation')
             plt.ylabel('Cross Entropy')
-            if proc==1:
-                lgd = plt.legend(scatterpoints=1, bbox_to_anchor=(1.35,1), 
-                    fontsize='medium') 
-            else:
-                lgd = plt.legend(scatterpoints=1, bbox_to_anchor=(1.81,1), 
-                    fontsize='x-small', ncol=2) 
-            plt.savefig(figure + '(' + i[0] + ')' + '(' + i[1] + ')' +
-                '(' + i[2] + ')' + '.png', bbox_extra_artists=(lgd,), 
-                bbox_inches='tight')                        
+            counter=0
+            if i[2]=='means':
+                for key, grp in grouped: 
+                    plt.scatter(np.mean(grp[i[0]]), np.mean(grp[i[1]]), 
+                        marker='o', c='k')
+                    if len(prior)==3:
+                        labels = [1, 2, 3, 4, 5, 6, 7]
+                        plt.annotate(labels[counter], (np.mean(grp[i[0]]),
+                            np.mean(grp[i[1]])), size='small', 
+                            xytext=(-4,4), textcoords='offset points')
+                        counter += 1
+                    plt.savefig(figure + '(' + i[0] + ')' + '(' + i[1] + ')' +
+                        '(' + i[2] + ')' + '.png', bbox_inches='tight')
+            else:    
+                for key, grp in grouped:                       
+                    temp1 = [round(j, 2) for j in key] # two decimal places               
+                    temp2 = str(tuple(temp1))
+                    plt.scatter(grp[i[0]], grp[i[1]], marker='o',
+                        c=marker[counter], label=temp2) 
+                    counter += 1  
+                    if len(prior)==3: 
+                        lgd = plt.legend(scatterpoints=1, 
+                            bbox_to_anchor=(1.25,1), fontsize='x-small', 
+                            ncol=1)   
+                    else:
+                        lgd = plt.legend(scatterpoints=1, 
+                            bbox_to_anchor=(1.81,1), fontsize='x-small', 
+                            ncol=2)   
+                    plt.savefig(figure + '(' + i[0] + ')' + '(' + i[1] + ')' + 
+                        '(' + i[2] + ')' + '.png', bbox_extra_artists=(lgd,), 
+                        bbox_inches='tight')                         
                                  
 if __name__ == "__main__":
 
@@ -652,11 +660,11 @@ if __name__ == "__main__":
                   (3, [1., -5., 2., -3., 8., 6., -2., -7., 4., -1.]),
                   (4, [1., -50., 20., -3., 8., 6., -2., -7., 4., -1.]), 
                   (5, [10., -50., 20., -30., 80., 60., -20., -70., 40., -10.])]
-    parms = parms_menu[1] # parameters values
+    parms = parms_menu[5] # parameters values
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
     corr = 0 # pairs of correlated covariates: [0, 1, 2]
-    proc = 1 # number of coefficients receiving prior procedure: [1, 2]
+    proc = 2 # number of coefficients receiving prior procedure: [1, 2]
     sd = 5 # standard deviation on model noise
     z = [-200., 0., 200.] # support for parameters
     x0 = np.zeros(T) # starting values
