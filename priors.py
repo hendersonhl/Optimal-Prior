@@ -638,7 +638,8 @@ class Prior(object):
         df = df_raw[df_raw['success']==1] # delete unsuccessful entries
         # group by prior
         prior = [i for i in df.columns if i.startswith('prior')]
-        grouped = df.groupby(prior)                   
+        grouped = df.groupby(prior) 
+        means = grouped.agg(np.mean) # aggregate by means                  
         lst = [('dev_ent','ce_total', 'all'),('dev_ent','ce_total','means'),
             ('dev_ent1','ce_total','all'),('dev_ent1','ce_total','means'),
             ('dev_ent','ce_signal', 'all'),('dev_ent','ce_signal','means'),
@@ -651,19 +652,18 @@ class Prior(object):
             plt.xlabel('Squared Deviation')
             plt.ylabel('Cross Entropy')
             if i[2]=='means':
-                for key, grp in grouped: 
-                    plt.scatter(np.mean(grp[i[0]]), np.mean(grp[i[1]]), 
-                        marker='o', c='k')
-                    if len(prior)==3:
-                        plt.annotate(int(grp['labels'].iloc[0]), 
-                            (np.mean(grp[i[0]]), np.mean(grp[i[1]])), 
+                plt.scatter(means[i[0]], means[i[1]], marker='o', c='k')
+                if len(prior)==3:
+                    for j in range(npriors):
+                        plt.annotate(int(means['labels'].iloc[j]), 
+                            (means[i[0]].iloc[j], means[i[1]].iloc[j]), 
                             size='small', xytext=(-10, 0), 
                             textcoords='offset points')
-                    plt.savefig(figure + '(' + i[0] + ')' + '(' + i[1] + ')' +
-                        '(' + i[2] + ')' + '.png', bbox_inches='tight')
+                plt.savefig(figure + '(' + i[0] + ')' + '(' + i[1] + ')' +
+                    '(' + i[2] + ')' + '.png', bbox_inches='tight')
                 if len(prior) > 3:   
                     plt.figure()
-                    best = grouped.agg(np.mean).sort('dev_ent')[0: 20] 
+                    best = means.sort('dev_ent')[0: 20] 
                     plt.scatter(best[i[0]], best[i[1]], marker='o', c='k')
                     for j in range(20):
                         plt.annotate(int(best['labels'].iloc[j]), 
@@ -681,17 +681,15 @@ class Prior(object):
                     plt.scatter(grp[i[0]], grp[i[1]], marker='o',
                         c=marker[counter], label=temp2) 
                     counter += 1  
-                    if len(prior)==3: 
-                        lgd = plt.legend(scatterpoints=1, 
-                            bbox_to_anchor=(1.25,1), fontsize='x-small', 
-                            ncol=1)   
-                    else:
-                        lgd = plt.legend(scatterpoints=1, 
-                            bbox_to_anchor=(1.81,1), fontsize='x-small', 
-                            ncol=2)   
-                    plt.savefig(figure + '(' + i[0] + ')' + '(' + i[1] + ')' + 
-                        '(' + i[2] + ')' + '.png', bbox_extra_artists=(lgd,), 
-                        bbox_inches='tight')                                 
+                if len(prior)==3: 
+                    lgd = plt.legend(scatterpoints=1, 
+                        bbox_to_anchor=(1.25,1), fontsize='x-small', ncol=1)   
+                else:
+                    lgd = plt.legend(scatterpoints=1, 
+                        bbox_to_anchor=(1.81,1), fontsize='x-small', ncol=2)   
+                plt.savefig(figure + '(' + i[0] + ')' + '(' + i[1] + ')' + 
+                    '(' + i[2] + ')' + '.png', bbox_extra_artists=(lgd,), 
+                    bbox_inches='tight')                                 
                                  
 if __name__ == "__main__":
 
