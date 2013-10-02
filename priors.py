@@ -28,16 +28,17 @@ class Prior(object):
     def __init__(self, T, N, parms, a, b, corr, proc, sd, z, x0, path):
         """Initializes Prior class."""
         K = len(parms[1]) # number of covariates (including intercept)
-        M = len(z) # number of parameter support points
-        J = len(z) # number of error support points
+        M = J = len(z) # number of parameter and error support points
         X = self.xdata(T, K, a, b, corr)
         z = np.array(z)[:, np.newaxis]
         u = (1.0/J)*np.ones(T*J)[:, np.newaxis] # uniform prior on noise
         priors = self.priors(M, proc)     
         # run experiment
         self.experiment(N, M, X, u, z, priors, parms, sd, x0, corr, proc, path)    
-        # get results
+        # calculate results
         self.results(path, T, sd, corr, parms, proc)
+        # create graphs
+        self.graphs(path, T, sd, corr, parms, proc)
                 
     def experiment(self, N, M, X, u, z, priors, parms, sd, x0, corr, proc, path):
         """Returns experiment results.
@@ -54,7 +55,7 @@ class Prior(object):
             Prior on noise
         z : ndarray
             Parameter support vector
-        priors : ndarray
+        priors : tuple
             Possible priors
         parms : tuple
             Model parameters
@@ -87,10 +88,10 @@ class Prior(object):
             # define Jacobian
             jac = lambda lmda, q: - self.jacobian(lmda, q, u, y, X, z, v)
             coeff, ols, dev_ent, dev_ols, ent, success = self.fit_model(obj, 
-                jac, priors, x0, y, X, u, z, v, parms[1], proc)   
-            data = np.hstack((np.vstack((priors)), np.vstack((coeff)), 
-                np.vstack((ols)), np.vstack((dev_ent)), np.vstack((dev_ols)), 
-                np.vstack((ent)),np.vstack((success))))  
+                jac, priors[0], x0, y, X, u, z, v, parms[1], proc)   
+            data = np.hstack((np.vstack((priors[0])), np.vstack((priors[1])),
+                np.vstack((coeff)), np.vstack((ols)), np.vstack((dev_ent)), 
+                np.vstack((dev_ols)), np.vstack((ent)), np.vstack((success))))  
             self.out(path, T, M, parms, sd, corr, data, i, proc) # write results 
             print 'Exit replication {0} ({1} seconds wall time)'.format(i + 1,
                 time.time() - t0 )
@@ -142,8 +143,7 @@ class Prior(object):
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
             result = minimize(obj, x0, args=(q,), method='L-BFGS-B', jac=jac, 
-                options={'ftol':1e-14, 'gtol':1e-14, 'maxiter':20000,
-                'maxcor':12})
+                options={'ftol':1e-14, 'gtol':1e-14, 'maxiter':20000})
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
             print 'Optimizer exited successfully: {}'.format(result.success)
             # get output
@@ -437,10 +437,13 @@ class Prior(object):
             prior.append(np.asarray(perm)/normalization)
         # uniform prior last
         prior.append(np.ones(M) / M)
+        labels = range(1, len(prior) + 1)
         if proc==2: # conduct prior procedure on two coefficients
-            prod = product(prior, prior)
-            prior = [np.concatenate(i) for i in prod]
-        return prior
+            prod1 = product(prior, prior)
+            prod2 = product(labels, labels)
+            prior = [np.concatenate(i) for i in prod1]
+            labels = [10*i[0] + i[1] for i in prod2]
+        return prior, labels
 
     def esupport(self, y, M):
         """Returns error support vector.
@@ -546,7 +549,8 @@ class Prior(object):
                 dev_ent.append('dev_ent')
                 dev_ols.append('dev_ols')
                 ce = ['ce_signal', 'ce_noise', 'ce_total']    
-                header = prior + b + ols + dev_ent + dev_ols + ce + ['success']
+                header = prior + ['labels'] + b + ols + dev_ent + dev_ols + ce \
+                    + ['success']
                 f.write(','.join(header))
                 # write data
                 for i in data:
@@ -559,7 +563,7 @@ class Prior(object):
                     f.write('\n' + ','.join(strdata))
                     
     def results(self, path, T, sd, corr, parms, proc):
-        """Creates post-simulation tables and graphs.
+        """Calculates post-simulation results.
         
         Parameters
         ----------
@@ -583,7 +587,7 @@ class Prior(object):
         data = path + nstr + 'out'  + '.csv'
         mresults = path + nstr + 'mresults' + '.csv'
         vresults = path + nstr + 'vresults' + '.csv'
-        figure = path + nstr + 'figure' 
+        presults = path + nstr + 'presults' + '.csv'
         df_raw = pd.read_csv(data) 
         df = df_raw[df_raw['success']==1] # delete unsuccessful entries
         # group by prior
@@ -591,6 +595,8 @@ class Prior(object):
         grouped = df.groupby(prior) 
         means = grouped.agg(np.mean) # aggregate by means
         variances = grouped.agg(np.var) # aggregate by variances
+        cnames = ['dev_ent','dev_ent1','ce_signal','ce_noise','ce_total']
+        correlations = means.ix[:, cnames].corr(method='spearman')
         # bias calculations 
         for i in range(len(parms[1])): # for ce coefficients
             bias_ent = 'bias_ent' + str(i)
@@ -601,8 +607,38 @@ class Prior(object):
             ols = 'ols' + str(i)
             means[bias_ols] = means[ols] - parms[1][i]
         means.to_csv(mresults) # write to csv
-        variances.to_csv(vresults) # write to csv          
-        # plot results
+        variances.to_csv(vresults) 
+        correlations.to_csv(presults)
+                      
+    def graphs(self, path, T, sd, corr, parms, proc): 
+        """Calculates post-simulation graphs.
+        
+        Parameters
+        ----------
+        path : str
+            File path
+        T : int
+            Number of observations
+        sd : int
+            Standard deviation on noise to generate dependent variable
+        corr : int
+            Correlated covariates
+        parms : tuple
+            Model parameters
+        proc : int
+            Number of coefficients receiving prior procedure 
+        
+        """  
+        assert type(T) == type(sd) == int, 'T and sd must be integers' 
+        assert proc==1 or proc==2, 'proc is misspecified'    
+        nstr = str(parms[0]) + str(T) + str(sd) + str(corr) + str(proc)
+        data = path + nstr + 'out'  + '.csv'
+        figure = path + nstr + 'figure'    
+        df_raw = pd.read_csv(data) 
+        df = df_raw[df_raw['success']==1] # delete unsuccessful entries
+        # group by prior
+        prior = [i for i in df.columns if i.startswith('prior')]
+        grouped = df.groupby(prior)                   
         lst = [('dev_ent','ce_total', 'all'),('dev_ent','ce_total','means'),
             ('dev_ent1','ce_total','all'),('dev_ent1','ce_total','means'),
             ('dev_ent','ce_signal', 'all'),('dev_ent','ce_signal','means'),
@@ -614,20 +650,31 @@ class Prior(object):
             plt.figure()
             plt.xlabel('Squared Deviation')
             plt.ylabel('Cross Entropy')
-            counter=0
             if i[2]=='means':
                 for key, grp in grouped: 
                     plt.scatter(np.mean(grp[i[0]]), np.mean(grp[i[1]]), 
                         marker='o', c='k')
                     if len(prior)==3:
-                        labels = [1, 2, 3, 4, 5, 6, 7]
-                        plt.annotate(labels[counter], (np.mean(grp[i[0]]),
-                            np.mean(grp[i[1]])), size='small', 
-                            xytext=(-4,4), textcoords='offset points')
-                        counter += 1
+                        plt.annotate(int(grp['labels'].iloc[0]), 
+                            (np.mean(grp[i[0]]), np.mean(grp[i[1]])), 
+                            size='small', xytext=(-10, 0), 
+                            textcoords='offset points')
                     plt.savefig(figure + '(' + i[0] + ')' + '(' + i[1] + ')' +
                         '(' + i[2] + ')' + '.png', bbox_inches='tight')
-            else:    
+                if len(prior) > 3:   
+                    plt.figure()
+                    best = grouped.agg(np.mean).sort('dev_ent')[0: 20] 
+                    plt.scatter(best[i[0]], best[i[1]], marker='o', c='k')
+                    for j in range(20):
+                        plt.annotate(int(best['labels'].iloc[j]), 
+                            (best[i[0]].iloc[j],best[i[1]].iloc[j]), 
+                            size='small', xytext=(-15,0), 
+                            textcoords='offset points')
+                    plt.savefig(figure + '(' + i[0] + ')' + '(' + i[1] + ')' + 
+                        '(' + i[2] + ')' + '(' + '2' + ')'+ '.png', 
+                        bbox_inches='tight')
+            else:
+                counter=0    
                 for key, grp in grouped:                       
                     temp1 = [round(j, 2) for j in key] # two decimal places               
                     temp2 = str(tuple(temp1))
@@ -644,7 +691,7 @@ class Prior(object):
                             ncol=2)   
                     plt.savefig(figure + '(' + i[0] + ')' + '(' + i[1] + ')' + 
                         '(' + i[2] + ')' + '.png', bbox_extra_artists=(lgd,), 
-                        bbox_inches='tight')                         
+                        bbox_inches='tight')                                 
                                  
 if __name__ == "__main__":
 
