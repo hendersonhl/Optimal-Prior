@@ -18,7 +18,6 @@ Key notation:
 import numpy as np
 from itertools import permutations, product
 from scipy.misc import logsumexp
-from scipy.misc import factorial
 from scipy.optimize import minimize
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -435,8 +434,10 @@ class Prior(object):
         for perm in permutations(seq, M):
             normalization = (M * (M + 1)) / 2.
             prior.append(np.asarray(perm)/normalization)
-        # uniform prior last
+        # addditional priors
         prior.append(np.ones(M) / M)
+        prior.append(np.array([0.65,0.30,0.05]))
+        prior.append(np.array([0.05,0.30,0.65]))
         labels = range(1, len(prior) + 1)
         if proc==2: # conduct prior procedure on two coefficients
             prod1 = product(prior, prior)
@@ -644,7 +645,7 @@ class Prior(object):
             ('dev_ent1','ce_total','all'),('dev_ent1','ce_total','means'),
             ('dev_ent','ce_signal', 'all'),('dev_ent','ce_signal','means'),
             ('dev_ent1','ce_signal','all'),('dev_ent1','ce_signal','means')]
-        npriors = int(factorial(len(prior)) + 1)
+        npriors = len(means)
         marker = [tuple(np.random.uniform(0, 1, size=(1, 3))[0]) 
             for i in range(npriors)] # list of RGB tuples   
         for i in lst:
@@ -657,7 +658,7 @@ class Prior(object):
                     for j in range(npriors):
                         plt.annotate(int(means['labels'].iloc[j]), 
                             (means[i[0]].iloc[j], means[i[1]].iloc[j]), 
-                            size='small', xytext=(-10, 0), 
+                            size='small', xytext=(0, 5), 
                             textcoords='offset points')
                 plt.savefig(figure + '(' + i[0] + ')' + '(' + i[1] + ')' +
                     '(' + i[2] + ')' + '.png', bbox_inches='tight')
@@ -686,7 +687,7 @@ class Prior(object):
                         bbox_to_anchor=(1.25,1), fontsize='x-small', ncol=1)   
                 else:
                     lgd = plt.legend(scatterpoints=1, 
-                        bbox_to_anchor=(1.81,1), fontsize='x-small', ncol=2)   
+                        bbox_to_anchor=(2.22,1), fontsize='x-small', ncol=3)   
                 plt.savefig(figure + '(' + i[0] + ')' + '(' + i[1] + ')' + 
                     '(' + i[2] + ')' + '.png', bbox_extra_artists=(lgd,), 
                     bbox_inches='tight')                                 
@@ -698,7 +699,7 @@ if __name__ == "__main__":
 
     # user inputs
     T = 50 # sample size: [10, 20, 50, 100, 500]
-    N = 2 # number of replications: [100, 1000, 5000]
+    N = 2 # number of replications
     parms_menu = [(0, [1., -5., 2.]),
                   (1, [1., -50., 2.]),
                   (2, [10., -50., 20.]),
@@ -710,7 +711,7 @@ if __name__ == "__main__":
     b = 20 # upper bound on uniform dist. of covariates
     corr = 0 # pairs of correlated covariates: [0, 1, 2]
     proc = 2 # number of coefficients receiving prior procedure: [1, 2]
-    sd = 5 # standard deviation on model noise
+    sd = 2 # standard deviation on model noise
     z = [-200., 0., 200.] # support for parameters
     x0 = np.zeros(T) # starting values
     path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
