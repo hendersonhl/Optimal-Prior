@@ -19,7 +19,10 @@ import numpy as np
 from itertools import permutations, product
 from scipy.misc import logsumexp
 from scipy.optimize import minimize
+from scipy.optimize import fmin_l_bfgs_b
 import pandas as pd
+#import matplotlib # use if on HPC
+#matplotlib.use('Agg') # use if on HPC
 import matplotlib.pyplot as plt
 import time
 
@@ -141,6 +144,8 @@ class Prior(object):
             q[M: (proc + 1)*M] = np.array(prior)[:, np.newaxis]
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
+            # result = fmin_l_bfgs_b(obj, x0, fprime=jac, args=(q,), 
+            #    pgotl=1e-14, maxiter=20000)
             result = minimize(obj, x0, args=(q,), method='L-BFGS-B', jac=jac, 
                 options={'ftol':1e-14, 'gtol':1e-14, 'maxiter':20000})
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
@@ -699,22 +704,23 @@ if __name__ == "__main__":
 
     # user inputs
     T = 50 # sample size: [10, 20, 50, 100, 500]
-    N = 2 # number of replications
+    N = 5 # number of replications
     parms_menu = [(0, [1., -5., 2.]),
                   (1, [1., -50., 2.]),
                   (2, [10., -50., 20.]),
                   (3, [1., -5., 2., -3., 8., 6., -2., -7., 4., -1.]),
                   (4, [1., -50., 20., -3., 8., 6., -2., -7., 4., -1.]), 
                   (5, [10., -50., 20., -30., 80., 60., -20., -70., 40., -10.])]
-    parms = parms_menu[5] # parameters values
+    parms = parms_menu[2] # parameters values
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
-    corr = 0 # pairs of correlated covariates: [0, 1, 2]
-    proc = 2 # number of coefficients receiving prior procedure: [1, 2]
-    sd = 2 # standard deviation on model noise
+    corr = 1 # pairs of correlated covariates: [0, 1, 2]
+    proc = 1 # number of coefficients receiving prior procedure: [1, 2]
+    sd = 2 # standard deviation on model noise: [2, 5]
     z = [-200., 0., 200.] # support for parameters
     x0 = np.zeros(T) # starting values
-    path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
+    #path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
+    path = '/home/hh9467a/'
     
     # run experiment
     exp = Prior(T, N, parms, a, b, corr, proc, sd, z, x0, path)
