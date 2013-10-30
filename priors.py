@@ -19,10 +19,9 @@ import numpy as np
 from itertools import permutations, product
 from scipy.misc import logsumexp
 from scipy.optimize import minimize
-from scipy.optimize import fmin_l_bfgs_b
 import pandas as pd
-#import matplotlib # use if on HPC
-#matplotlib.use('Agg') # use if on HPC
+import matplotlib # use if on HPC
+matplotlib.use('Agg') # use if on HPC
 import matplotlib.pyplot as plt
 import time
 
@@ -144,10 +143,8 @@ class Prior(object):
             q[M: (proc + 1)*M] = np.array(prior)[:, np.newaxis]
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
-            # result = fmin_l_bfgs_b(obj, x0, fprime=jac, args=(q,), 
-            #    pgotl=1e-14, maxiter=20000)
-            result = minimize(obj, x0, args=(q,), method='L-BFGS-B', jac=jac, 
-                options={'ftol':1e-14, 'gtol':1e-14, 'maxiter':20000})
+            result = minimize(obj, x0, args=(q,), method='L-BFGS-B', jac=jac,
+                options={'ftol': 1e-14, 'gtol': 1e-14, 'maxiter': 20000})
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
             print 'Optimizer exited successfully: {}'.format(result.success)
             # get output
@@ -720,7 +717,7 @@ if __name__ == "__main__":
     z = [-200., 0., 200.] # support for parameters
     x0 = np.zeros(T) # starting values
     #path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
-    path = '/home/hh9467a/'
+    path = '/home/hh9467a/Output/'
     
     # run experiment
     exp = Prior(T, N, parms, a, b, corr, proc, sd, z, x0, path)
