@@ -36,3 +36,17 @@ practice.py
 my_program.lsf
 
 .my_program.lsf.swp
+
+Results.xlsx
+
+*.aux
+
+*.bbl
+
+*.blg
+
+*.log
+
+*.out
+
+*.gz

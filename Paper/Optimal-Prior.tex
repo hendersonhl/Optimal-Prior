@@ -1,0 +1,294 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% Preamble %%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Word target: 2,000 words
+
+% Outline:
+% I. Introduction (250 words)
+% II. Generalized Maximum Entropy Estimator (500 words) (~475 currently)
+% III. Monte Carlo Experiment (750 words)
+% IV. Application (250 words)
+% V. Conclusions (250 words)
+
+% Declare document class and miscellaneous packages
+\documentclass[english]{article}
+\usepackage{natbib}
+\usepackage{amsmath}
+\usepackage{mathrsfs}
+\usepackage{amssymb}
+\usepackage{ctable}
+\usepackage{setspace}
+\usepackage{longtable}
+\usepackage{url}
+\usepackage{moredefs,lips} 
+\usepackage{IEEEtrantools}
+\usepackage{multirow}
+\usepackage{enumerate}
+\usepackage[normalsize]{caption}
+\usepackage{afterpage}
+\usepackage[all]{nowidow}
+\usepackage{listings}
+%\usepackage{fullpage}
+\urlstyle{rm}
+
+%Hyper-references
+\usepackage{hyperref}
+\hypersetup{colorlinks, citecolor=black, filecolor=black, linkcolor=black, 
+urlcolor=black, pdftex}
+
+% Title page
+\title{Improving Small Sample Performance of the Generalized Maximum 
+Entropy Estimator}
+\author{
+Heath Henderson\thanks{Corresponding author; 1300 New York Avenue 
+NW, Washington, DC 20577; Tel: +1 202 623 3860; Fax: +1 202 312 4202; 
+Email: heathh@iadb.org.}\\
+\textit{Office of Strategic Planning and Development Effectiveness} \\
+\textit{Inter-American Development Bank} \\
+\\
+Amos Golan \\
+\textit{Department of Economics}\\
+\textit{American University} \\
+\\
+Skipper Seabold \\
+\textit{Department of Economics}\\
+\textit{American University}
+\\ \\
+}
+
+\date{\today}
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%% Title Page and Abstract %%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{titlepage}
+\maketitle
+
+\begin{abstract}
+%\textit{Key words}: \\
+%\textit{JEL codes}:  
+\end{abstract}
+\thispagestyle{empty}
+\end{titlepage}
+\newpage
+
+% Set citations without comma between author and year
+\bibpunct{(}{)}{;}{a}{}{,}
+
+\doublespacing
+
+% Outline:
+% I. Introduction (250 words)
+% II. Generalized Maximum Entropy Estimator (250 words)
+% III. Monte Carlo Experiment (750 words)
+% IV. Application (500 words)
+% V. Conclusions (250 words)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%% Introduction %%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section*{Introduction}
+\label{sec: intro}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%% GME Estimator  %%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section*{GCE Estimator}
+\label{sec: gme}
+
+Following \cite{golan1996} and \citet{golan2008}, consider the following 
+linear regression model: 
+\begin{equation}
+\mathbf{y} = \mathbf{X\beta} + \mathbf{\varepsilon}
+\end{equation}
+
+\noindent
+where $\mathbf{y}$ is a $T$-dimensional vector of observations on the 
+dependent variable, $\mathbf{X}$ is a $T\times K$ matrix of exogenous
+variables, $\mathbf{\beta}$ is a $K$-dimensional vector of unknown 
+parameters, and $\mathbf{\varepsilon}$ is a $T$-dimensional vector of 
+random errors.
+Each $\mathbf{\beta}_k$ and $\mathbf{\varepsilon}_t$ in the GCE 
+framework is typically viewed as the mean value of some well-defined 
+random variable, which we denote as $\mathbf{z}_k$ and $\mathbf{v}_t$, 
+respectively.
+Accordingly, let $\mathbf{p}_k$ be an $M$-dimensional proper 
+probability distribution defined on the support $\mathbf{z}_k$ such that 
+$\mathbf{\beta}_k = \sum_m p_{km}z_{km} = \mathbf{z}_k' 
+\mathbf{p}_k$.
+Similarly, let $\mathbf{w}_t$ be a $J$-dimensional proper probability 
+distribution defined on the support $\mathbf{v}_t$ such that  
+$\mathbf{\varepsilon}_t = \sum_j w_{tj}z_{tj} = \mathbf{v}_t' 
+\mathbf{w}_t$.
+
+Without loss of generality, the linear regression model can then be 
+reparameterized as follows:
+\begin{equation}
+\mathbf{y} = \mathbf{X\beta} + \mathbf{\varepsilon} = 
+\mathbf{X Z p} + \mathbf{V w}
+\end{equation}
+
+\noindent
+where 
+\begin{equation}
+\mathbf{\beta} = \mathbf{Zp} = 
+\left[ \begin{array}{cccc}
+\mathbf{z}_1' & 0 & \cdot & 0 \\
+0  & \mathbf{z}_2' & \cdot & 0 \\
+\cdot  & \cdot  & \cdot & \cdot  \\
+0 & 0 & \cdot & \mathbf{z}_K'
+\end{array}\right]
+\left[ \begin{array}{c}
+\mathbf{p}_1 \\
+\mathbf{p}_2 \\
+\cdot \\
+\mathbf{p}_K 
+\end{array}\right]
+\end{equation}
+
+\noindent
+and 
+\begin{equation}
+\mathbf{\varepsilon} = \mathbf{Vw} = 
+\left[ \begin{array}{cccc}
+\mathbf{v}_1' & 0 & \cdot & 0 \\
+0  & \mathbf{v}_2' & \cdot & 0 \\
+\cdot  & \cdot  & \cdot & \cdot  \\
+0 & 0 & \cdot & \mathbf{v}_T'
+\end{array}\right]
+\left[ \begin{array}{c}
+\mathbf{w}_1 \\
+\mathbf{w}_2 \\
+\cdot \\
+\mathbf{w}_T 
+\end{array}\right].
+\end{equation}
+
+\noindent
+The dimensions of $\mathbf{Z}$ and $\mathbf{p}$ are then 
+$K \times KM$ and $KM \times 1$, respectively, and the dimensions of 
+$\mathbf{V}$ and $\mathbf{w}$ are $T \times TJ$ and $TJ \times 1$, 
+respectively.
+It should be noted that while it is possible to construct unbounded and 
+continuous supports,%
+\footnote{For example, see \citet{golan2002}.}
+for the sake of simplicity the above support spaces are constructed as 
+discrete and bounded. 
+
+Let $\mathbf{q}$ be a $KM$-dimensional vector of prior weights for the 
+parameters $\mathbf{\beta}$ with prior mean $\mathbf{Zq}$.
+Analogously, let $\mathbf{u}$ be a $TJ$-dimensional vector of prior weights 
+for the disturbances $\mathbf{\varepsilon}$ with prior mean $\mathbf{Vu}$.
+The GCE estimator then selects $\mathbf{p}$, $\mathbf{w}$ $\gg$ 
+$\mathbf{0}$ to minimize 
+\begin{equation}
+I({\mathbf{p}, \mathbf{q}, \mathbf{w}, \mathbf{u}}) = 
+\mathbf{p}' \ln (\mathbf{p}/\mathbf{q}) + 
+\mathbf{w}' \ln (\mathbf{w}/\mathbf{u})
+\end{equation}
+
+\noindent
+subject to
+\begin{equation}
+\mathbf{y} = \mathbf{X Z p} 
++ \mathbf{V w}
+\end{equation}
+\begin{equation}
+\mathbf{1}_K = (\mathbf{I}_K \otimes \mathbf{1}_M')\mathbf{p}
+\end{equation}
+\begin{equation}
+\mathbf{1}_T = (\mathbf{I}_T \otimes \mathbf{1}_J')\mathbf{w}
+\end{equation}
+
+\noindent
+where $\mathbf{1}$ denotes a vector of ones, $\mathbf{I}$ is the 
+identity matrix, and $\otimes$ is the Kronecker product.
+The reader is referred to \citet[Chap.\ 6]{golan1996} or 
+\citet[Chap.\ 6]{golan2008} for analytical solutions, discussion of 
+efficient techniques for computation of the GCE solutions via the 
+unconstrained dual version of the problem, and issues of inference. 
+
+Intuitively, the values of $\mathbf{p}$ and $\mathbf{w}$ that minimize
+$I(\cdot)$ are those that, out of all probabilities satisfying the constraints, 
+are ``closest'' to the researcher's chosen priors.
+That is, $I(\cdot)$ is a measure of the discrepancy between two probability 
+distributions and, for given prior probabilities, the objective is to find the 
+posterior probabilities that minimize this discrepancy function.%
+\footnote{See \citet[Chap.\ 6]{judge2011} for a full discussion of the 
+cross entropy (or Kullback-Leibler) objective function.}
+It can further be shown that GCE is a generalization of GME formalism.
+That is, with uniform priors the GCE solution is identical to that which 
+maximizes $H(\mathbf{p},\mathbf{w}) = - \mathbf{p}' \ln 
+(\mathbf{p}) - \mathbf{w}' \ln (\mathbf{w})$ subject to the data
+consistency and proper probability constraints. 
+
+A central question in GCE estimation pertains to the choice of 
+priors or reference distributions.
+Prior information is frequently incomplete, noisy, or simply missing, and 
+the researcher must choose among a possibly infinite number of 
+reference distributions. 
+While in such situations priors are often specified as uniform (i.e.\ 
+$\mathbf{q}=1/M$ and $\mathbf{u}=1/J$), more informative 
+reference distributions can enhance finite sample performance, especially 
+for ill-posed, ill-conditioned, or noisy problems.%
+\footnote{For example, see \citet{heckelei2003}.}
+Accordingly, in the context of limited \textit{a priori} information, 
+we seek a basis for selecting among alternative plausible reference 
+distributions in an effort to improve the finite sample performance of 
+the GCE estimator. 
+To this end, we conduct Monte Carlo experiments to examine competing
+measures or criteria by which informative priors might be chosen.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%% Monte Carlo Experiment %%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section*{Monte Carlo Experiment}
+\label{sec: mce}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%% Application %%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section*{Application}
+\label{sec: app}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%% Conclusions %%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section*{Conclusions}
+\label{sec: conc}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% References %%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%Start fresh page
+\newpage
+\cleardoublepage
+\singlespacing
+
+%Declare the style of the bibliography
+\bibliographystyle{au-cms}
+
+%Specify the file to use
+\bibliography{/Users/hendersonhl/Documents/References}
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% Appendix %%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+\doublespacing
+\section*{Appendix}
+
+
+\end{document}

@@ -20,8 +20,8 @@ from itertools import permutations, product
 from scipy.misc import logsumexp
 from scipy.optimize import minimize
 import pandas as pd
-import matplotlib # use if on HPC
-matplotlib.use('Agg') # use if on HPC
+#import matplotlib # use if on HPC
+#matplotlib.use('Agg') # use if on HPC
 import matplotlib.pyplot as plt
 import time
 
@@ -700,8 +700,8 @@ if __name__ == "__main__":
     np.random.seed(12345)
 
     # user inputs
-    T = 50 # sample size: [10, 20, 50, 100, 500]
-    N = 5 # number of replications
+    T = 10 # sample size: [10, 20, 50, 100, 500]
+    N = 1000 # number of replications
     parms_menu = [(0, [1., -5., 2.]),
                   (1, [1., -50., 2.]),
                   (2, [10., -50., 20.]),
@@ -711,13 +711,13 @@ if __name__ == "__main__":
     parms = parms_menu[2] # parameters values
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
-    corr = 1 # pairs of correlated covariates: [0, 1, 2]
+    corr = 0 # pairs of correlated covariates: [0, 1, 2]
     proc = 1 # number of coefficients receiving prior procedure: [1, 2]
-    sd = 2 # standard deviation on model noise: [2, 5]
-    z = [-200., 0., 200.] # support for parameters
+    sd = 5 # standard deviation on model noise: [2, 5]
+    z = [-1500., 0., 1500.] # support for parameters
     x0 = np.zeros(T) # starting values
-    #path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
-    path = '/home/hh9467a/Output/'
+    path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
+    #path = '/home/hh9467a/Output/'
     
     # run experiment
     exp = Prior(T, N, parms, a, b, corr, proc, sd, z, x0, path)
