@@ -2,12 +2,13 @@
 %%%%%%%%%%%% Preamble %%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Word target: 2,000 words
+% Word target: 2,250 words
 
 % Outline:
-% I. Introduction (250 words)
+% I. Introduction (250 words) (~300 currently)
 % II. Generalized Maximum Entropy Estimator (500 words) (~475 currently)
-% III. Monte Carlo Experiment (750 words)
+% III. Monte Carlo Experiment (500 words) (~450)
+% IV. Results (500 words)
 % IV. Application (250 words)
 % V. Conclusions (250 words)
 
@@ -69,8 +70,22 @@ Skipper Seabold \\
 \maketitle
 
 \begin{abstract}
-%\textit{Key words}: \\
-%\textit{JEL codes}:  
+In the estimation of linear and non-linear models, the generalized maximum 
+entropy (GME) estimator has been found to outperform its traditional 
+counterparts.
+The generalized cross entropy (GCE) estimator is a generalization of GME
+that permits the incorporation of prior information.
+While informative priors can improve the performance of the GCE estimator 
+relative to GME, prior information is often imperfect and achieving improved 
+performance implies choosing among a possibly infinite number of priors.
+Through extensive Monte Carlo experiments, we thus seek a general basis for 
+selecting among alternative prior distributions in an effort to improve the 
+performance of the GCE estimator. \\
+~\\
+\textit{Key words}: Generalized maximum entropy; Generalized cross 
+entropy; Monte Carlo experiment; prior information\\
+~ \\
+\textit{JEL codes}: C13; C14  
 \end{abstract}
 \thispagestyle{empty}
 \end{titlepage}
@@ -81,26 +96,62 @@ Skipper Seabold \\
 
 \doublespacing
 
-% Outline:
-% I. Introduction (250 words)
-% II. Generalized Maximum Entropy Estimator (250 words)
-% III. Monte Carlo Experiment (750 words)
-% IV. Application (500 words)
-% V. Conclusions (250 words)
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%% Introduction %%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section*{Introduction}
+\section{Introduction}
 \label{sec: intro}
+
+The generalized maximum entropy (GME) estimator seeks to recover the 
+unknown probability distributions that characterize a given dataset by 
+maximizing the Shannon (\citeyear{shannon1948}) entropy or uncertainty 
+measure subject to stochastic moment conditions and proper probability 
+constraints.%
+\footnote{The estimator is termed ``generalized'' because it is a 
+generalization of classical maximum entropy (ME) formalism, which treats
+moment conditions as non-stochastic \citep{jaynes1957a, jaynes1957b}.}
+In the estimation of both linear and non-linear models, the GME estimator
+has been found to outperform its traditional counterparts (e.g.\ ordinary 
+least squares and maximum likelihood estimators), especially in the context 
+of ill-posed, ill-conditioned, or noisy problems \citep{golan1996}.
+As such, the GME estimator has witnessed widespread application in the 
+social and natural sciences.
+
+The generalized cross entropy (GCE) estimator instead uses the 
+Kullback-Leibler (\citeyear{kullback1951}) divergence metric to minimize the 
+discrepancy between the posterior probabilities and the researcher's chosen 
+priors.
+For uniform priors, it can be shown that GME and GCE formalism yield
+identical solutions, and thus GCE is a generalization of the GME estimator
+\citep{golan1996}.
+While informative reference distributions can improve the performance of 
+the GCE estimator relative to GME,%
+\footnote{For example, see \citet{heckelei2003}.}
+prior information is often imperfect and achieving improved performance 
+implies choosing among a possibly infinite number of prior probability 
+distributions.
+Accordingly, in the context of limited \textit{a priori} information, 
+we seek a basis for selecting among alternative plausible reference 
+distributions in an effort to improve the performance of the GCE 
+estimator. 
+
+In what follows, Section \ref{sec: gce} discusses the GCE estimator and 
+Section \ref{sec: mce} details the Monte Carlo experiments through which 
+we examine competing measures or criteria by which informative priors might 
+be chosen.
+In Section \ref{sec: results} we then elaborate upon the results of the 
+experiments, after which we provide an illustrative example in Section 
+\ref{sec: app}.
+Finally, Section \ref{sec: conc} concludes. 
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%% GME Estimator  %%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section*{GCE Estimator}
-\label{sec: gme}
+\section{GCE Estimator}
+\label{sec: gce}
 
 Following \cite{golan1996} and \citet{golan2008}, consider the following 
 linear regression model: 
@@ -191,6 +242,7 @@ $\mathbf{0}$ to minimize
 I({\mathbf{p}, \mathbf{q}, \mathbf{w}, \mathbf{u}}) = 
 \mathbf{p}' \ln (\mathbf{p}/\mathbf{q}) + 
 \mathbf{w}' \ln (\mathbf{w}/\mathbf{u})
+\label{eq: ce}
 \end{equation}
 
 \noindent
@@ -198,12 +250,15 @@ subject to
 \begin{equation}
 \mathbf{y} = \mathbf{X Z p} 
 + \mathbf{V w}
+\label{eq: glm}
 \end{equation}
 \begin{equation}
 \mathbf{1}_K = (\mathbf{I}_K \otimes \mathbf{1}_M')\mathbf{p}
+\label{eq: pp1}
 \end{equation}
 \begin{equation}
 \mathbf{1}_T = (\mathbf{I}_T \otimes \mathbf{1}_J')\mathbf{w}
+\label{eq: pp2}
 \end{equation}
 
 \noindent
@@ -235,12 +290,12 @@ the researcher must choose among a possibly infinite number of
 reference distributions. 
 While in such situations priors are often specified as uniform (i.e.\ 
 $\mathbf{q}=1/M$ and $\mathbf{u}=1/J$), more informative 
-reference distributions can enhance finite sample performance, especially 
+reference distributions can enhance small sample performance, especially 
 for ill-posed, ill-conditioned, or noisy problems.%
 \footnote{For example, see \citet{heckelei2003}.}
 Accordingly, in the context of limited \textit{a priori} information, 
 we seek a basis for selecting among alternative plausible reference 
-distributions in an effort to improve the finite sample performance of 
+distributions in an effort to improve the small sample performance of 
 the GCE estimator. 
 To this end, we conduct Monte Carlo experiments to examine competing
 measures or criteria by which informative priors might be chosen.
@@ -249,22 +304,143 @@ measures or criteria by which informative priors might be chosen.
 %%%%%%%% Monte Carlo Experiment %%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section*{Monte Carlo Experiment}
+\section{Monte Carlo Experiment}
 \label{sec: mce}
+
+For each replication in the Monte Carlo experiments, our objective is to 
+minimize Eq.\ (\ref{eq: ce}) subject to Eqs.\ (\ref{eq: glm})-(\ref{eq: pp2}) 
+for alternative choices of $\mathbf{q}$, the prior weights for the parameter 
+$\mathbf{\beta}$. 
+To measure the performance of each reference distribution we focus on the 
+mean squared error $MSE(\hat{\mathbf{\beta}}) = 
+E[(\hat{\mathbf{\beta}}- \mathbf{\beta})^2]$.
+In seeking a basis for selecting among alternative priors, then, the 
+relationship between $MSE(\hat{\mathbf{\beta}})$ and three competing 
+measures or criteria is examined: (1) total cross entropy $I({\mathbf{p}, 
+\mathbf{q}, \mathbf{w}, \mathbf{u}}) = 
+\mathbf{p}' \ln (\mathbf{p}/\mathbf{q}) 
++ \mathbf{w}' \ln (\mathbf{w}/\mathbf{u})$; (2) signal cross entropy 
+$I(\mathbf{p}, \mathbf{q})= \mathbf{p}' \ln (\mathbf{p}/\mathbf{q})$;
+and (3) noise cross entropy $I(\mathbf{w}, \mathbf{u}) = 
+\mathbf{w}' \ln (\mathbf{w}/\mathbf{u})$.
+These measures are averaged across replications and their relationship with $MSE(\hat{\mathbf{\beta}})$ is considered for different parameter values, 
+sample sizes, degrees of correlation among covariates, and levels of noise.
+
+Consider a baseline scenario where the data generation process is as follows:
+\begin{equation}
+\mathbf{y} = \mathbf{XZp} + \mathbf{Vw}
+= \mathbf{\beta_1}\mathbf{x}_1 + \mathbf{\beta_2}\mathbf{x}_2
++ \mathbf{\beta_3}\mathbf{x}_3 + \mathbf{\varepsilon} 
+\end{equation}
+
+\noindent
+where the number of observations $T=10$, $\mathbf{\beta}=[1, -5, 2]'$,
+$\mathbf{x}_1=1$ is the intercept, $\mathbf{x}_2 \sim U(0,20)$, 
+$\mathbf{x}_3 \sim U(0,20)$, and $\mathbf{\varepsilon}\sim N(0,2)$.
+Letting $M=3$, the support vector on $\mathbf{p}_k$ is $\mathbf{z}_k 
+= [- 200, 0, 200]'$.
+Further, letting $J=3$ and using the three-sigma rule 
+\citep{pukelsheim1994}, the support vector on $\mathbf{w}_t$ is 
+$\mathbf{v}_t = [- 3\sigma_y, 0, 3\sigma_y]'$, which is calculated uniquely 
+for each replication based on the observed $\mathbf{y}$.
+Regarding prior information, we use uniform priors on the error term (i.e.\ 
+$\mathbf{u} = 1/J = 1/3$).
+With respect to prior probabilities on the signal, let $\mathbf{q} = 
+[\mathbf{q}_1, \mathbf{q}_2, \mathbf{q}_3]'$ represent prior 
+information on the respective elements of the parameter vector (e.g.\ 
+the prior mean on $\beta_2$ is $\mathbf{z}_2' \mathbf{q}_2$).
+While we let $\mathbf{q}_1 = \mathbf{q}_3 = 1/M = 1/3$ (i.e.\
+uniform), we estimate the model with strategic alternative specifications 
+of $\mathbf{q}_2$ (see Appendix for details).% 
+\footnote{That is, the focus here is on examining alternative reference 
+distributions for the parameter $\beta_2$. 
+However, with respect to the performance of the estimator, we are 
+interested in the MSE across all parameters.
+As will be seen, with correlation among covariates the specification of the 
+prior on $\beta_2$ affects the estimation of other parameters.}
+Finally, the experiment is conducted with $N=1,000$ replications and 
+performance is referenced against the OLS estimator.
+
+As mentioned, we also conduct experiments with different parameter 
+values, sample sizes, degrees of correlation, and levels of noise. 
+Regarding parameter values, in addition to $\mathbf{\beta}=[1,-5,2]$, we
+use the parameter vectors $[1,-50,2]'$ and $[10,-50,20]'$. 
+Denote these parameter vectors $\mathbf{\beta}^1$, 
+$\mathbf{\beta}^2$, and $\mathbf{\beta}^3$, repectively.
+With respect to sample sizes, beyond $T=10$ we consider $T=20, 50, 100, 
+\text{and } 500$. 
+Further, while in the baseline $\mathbf{x}_3 \sim U(0, 20)$, we 
+additionally introduce correlation among covariates and conduct 
+experiments where $\mathbf{x}_3 \sim 2 \mathbf{x}_2 + N(0, 5)$.
+Finally, we increase the level of noise in the experiments and let 
+$\mathbf{\varepsilon}\sim N(0,5)$.
+There are, thus, a total of 45 experimental specifications. 
+That is, for each parameter vector, the experiments are conducted with 
+five alternative sample sizes, where for each sample size we consider 
+a baseline, well-behaved case along with collinear and noisy cases.%
+\footnote{The Monte Carlo experiments were implemented in Python 
+2.7.3. 
+Computer code is available upon request.}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% Results %%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Results}
+\label{sec: results}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%% Application %%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section*{Application}
+\section{Application}
 \label{sec: app}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%% Conclusions %%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section*{Conclusions}
+\section{Conclusions}
 \label{sec: conc}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%% Appendix %%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+\section*{Appendix}
+\label{sec: appendix}
+
+In developing candidate priors on $\mathbf{p}_2$ 
+(i.e.\ $\mathbf{q}_2$), it is necessary to define proper probabilities on
+the vector $\mathbf{z}_2 = [-200, 0, 200]$ such that across alternative 
+choices of $\mathbf{q}_2$ the expectation $\mathbf{z}_2'\mathbf{q}_2$  
+yields values that span the relevant portion of the support space. 
+As such, the choice was made to use the following realizations of 
+$\mathbf{q}_2$:
+\begin{align*}
+[0.167, 0.333, 0.500] \\
+[0.167, 0.500, 0.333] \\
+[0.333, 0.167, 0.500] \\
+[0.333, 0.500, 0.167] \\
+[0.500, 0.167, 0.333] \\
+[0.500, 0.333, 0.167] \\
+[0.650, 0.300, 0.050] \\
+[0.050, 0.300, 0.650] \\
+[0.333, 0.333, 0.333]
+\end{align*}
+
+\noindent
+It is readily verifiable that these priors indeed span the support space in
+a reasonable manner.
+While it is clearly feasible to incorporate additional priors, such additions 
+increase the computational burden of the Monte Carlo experiments.
+The above listing appears sufficient for illustrating our estimation technique.
+Empirical applications of the procedure may, however, benefit from 
+additional reference distributions.
+Finally, it should be noted that the uniform prior is included in the above 
+and, as such, the GME estimator is included as a special case in the 
+experiments. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%% References %%%%%%%%%%%%
@@ -281,14 +457,5 @@ measures or criteria by which informative priors might be chosen.
 %Specify the file to use
 \bibliography{/Users/hendersonhl/Documents/References}
 \newpage
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%% Appendix %%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\newpage
-\doublespacing
-\section*{Appendix}
-
 
 \end{document}
