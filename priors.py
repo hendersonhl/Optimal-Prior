@@ -714,7 +714,7 @@ if __name__ == "__main__":
     corr = 0 # pairs of correlated covariates: [0, 1, 2]
     proc = 1 # number of coefficients receiving prior procedure: [1, 2]
     sd = 5 # standard deviation on model noise: [2, 5]
-    z = [-1500., 0., 1500.] # support for parameters
+    z = [-200., 0., 200.] # support for parameters
     x0 = np.zeros(T) # starting values
     path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
     #path = '/home/hh9467a/Output/'

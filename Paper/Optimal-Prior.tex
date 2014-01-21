@@ -2,12 +2,20 @@
 %%%%%%%%%%%% Preamble %%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Word target: 2,250 words
+% To do:
+% (1) Later we'll create more informative title
+% (2) Discuss section set ("big") of experiments
+% (3) Create table to summarize experiments
+% (4) Focus results on parameter sets 0 and 3. Create section for misspecified 
+% supports
+% (5) Commas in vectors?
+
+% Word target: 2,500 words
 
 % Outline:
 % I. Introduction (250 words) (~300 currently)
-% II. Generalized Maximum Entropy Estimator (500 words) (~475 currently)
-% III. Monte Carlo Experiment (500 words) (~450)
+% II. Nested GCE estimator (500 words) (~795 currently)
+% III. Sampling Experiments (500 words) (~450)
 % IV. Results (500 words)
 % IV. Application (250 words)
 % V. Conclusions (250 words)
@@ -39,7 +47,7 @@
 urlcolor=black, pdftex}
 
 % Title page
-\title{Improving Small Sample Performance of the Generalized Maximum 
+\title{Improving Small Sample Performance of the Generalized Cross 
 Entropy Estimator}
 \author{
 Heath Henderson\thanks{Corresponding author; 1300 New York Avenue 
@@ -69,24 +77,24 @@ Skipper Seabold \\
 \begin{titlepage}
 \maketitle
 
-\begin{abstract}
-In the estimation of linear and non-linear models, the generalized maximum 
-entropy (GME) estimator has been found to outperform its traditional 
-counterparts.
-The generalized cross entropy (GCE) estimator is a generalization of GME
-that permits the incorporation of prior information.
-While informative priors can improve the performance of the GCE estimator 
-relative to GME, prior information is often imperfect and achieving improved 
-performance implies choosing among a possibly infinite number of priors.
-Through extensive Monte Carlo experiments, we thus seek a general basis for 
-selecting among alternative prior distributions in an effort to improve the 
-performance of the GCE estimator. \\
-~\\
-\textit{Key words}: Generalized maximum entropy; Generalized cross 
-entropy; Monte Carlo experiment; prior information\\
-~ \\
-\textit{JEL codes}: C13; C14  
-\end{abstract}
+%\begin{abstract}
+%In the estimation of linear and non-linear models, the generalized maximum 
+%entropy (GME) estimator has been found to outperform its traditional 
+%counterparts.
+%The generalized cross entropy (GCE) estimator is a generalization of GME
+%that permits the incorporation of prior information.
+%While informative priors can improve the performance of the GCE estimator 
+%relative to GME, prior information is often missing and achieving improved 
+%performance implies choosing among a possibly infinite number of priors.
+%Through extensive sampling experiments, we thus identify a general basis 
+%for selecting among alternative prior distributions in an effort to improve the 
+%performance of the GCE estimator. \\
+%~\\
+%\textit{Key words}: Generalized maximum entropy; Generalized cross 
+%entropy; Prior information\\
+%~ \\
+%\textit{JEL codes}: C13; C14  
+%\end{abstract}
 \thispagestyle{empty}
 \end{titlepage}
 \newpage
@@ -125,33 +133,32 @@ priors.
 For uniform priors, it can be shown that GME and GCE formalism yield
 identical solutions, and thus GCE is a generalization of the GME estimator
 \citep{golan1996}.
-While informative reference distributions can improve the performance of 
-the GCE estimator relative to GME,%
+While more informative reference distributions can improve the performance 
+of the GCE estimator relative to GME,%
 \footnote{For example, see \citet{heckelei2003}.}
-prior information is often imperfect and achieving improved performance 
+such prior information is often missing and achieving improved performance 
 implies choosing among a possibly infinite number of prior probability 
 distributions.
-Accordingly, in the context of limited \textit{a priori} information, 
-we seek a basis for selecting among alternative plausible reference 
-distributions in an effort to improve the performance of the GCE 
-estimator. 
+We thus identify a general basis for selecting among alternative reference 
+distributions and develop a nested GCE estimator that improves 
+upon the small sample performance of the GCE estimator. 
 
-In what follows, Section \ref{sec: gce} discusses the GCE estimator and 
-Section \ref{sec: mce} details the Monte Carlo experiments through which 
-we examine competing measures or criteria by which informative priors might 
-be chosen.
-In Section \ref{sec: results} we then elaborate upon the results of the 
-experiments, after which we provide an illustrative example in Section 
-\ref{sec: app}.
-Finally, Section \ref{sec: conc} concludes. 
-
+In what follows, Section \ref{sec: gce} discusses GCE formalism and 
+our nested GCE estimator.
+Section \ref{sec: mce} details the sampling experiments through which we
+compare the performance of our estimation strategy to the leading 
+alternative estimators.
+Section \ref{sec: results} elaborates upon the results of the 
+experiments and Section \ref{sec: conc} concludes. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%% GME Estimator  %%%%%%%%%%%
+%%%%%%% The Nested GCE Estimator  %%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{GCE Estimator}
+\section{The Nested GCE Estimator}
 \label{sec: gce}
+
+\subsection{The GCE Estimator}
 
 Following \cite{golan1996} and \citet{golan2008}, consider the following 
 linear regression model: 
@@ -186,45 +193,19 @@ reparameterized as follows:
 \end{equation}
 
 \noindent
-where 
-\begin{equation}
-\mathbf{\beta} = \mathbf{Zp} = 
-\left[ \begin{array}{cccc}
-\mathbf{z}_1' & 0 & \cdot & 0 \\
-0  & \mathbf{z}_2' & \cdot & 0 \\
-\cdot  & \cdot  & \cdot & \cdot  \\
-0 & 0 & \cdot & \mathbf{z}_K'
-\end{array}\right]
-\left[ \begin{array}{c}
-\mathbf{p}_1 \\
-\mathbf{p}_2 \\
-\cdot \\
-\mathbf{p}_K 
-\end{array}\right]
-\end{equation}
-
-\noindent
-and 
-\begin{equation}
-\mathbf{\varepsilon} = \mathbf{Vw} = 
-\left[ \begin{array}{cccc}
-\mathbf{v}_1' & 0 & \cdot & 0 \\
-0  & \mathbf{v}_2' & \cdot & 0 \\
-\cdot  & \cdot  & \cdot & \cdot  \\
-0 & 0 & \cdot & \mathbf{v}_T'
-\end{array}\right]
-\left[ \begin{array}{c}
-\mathbf{w}_1 \\
-\mathbf{w}_2 \\
-\cdot \\
-\mathbf{w}_T 
-\end{array}\right].
-\end{equation}
-
-\noindent
-The dimensions of $\mathbf{Z}$ and $\mathbf{p}$ are then 
-$K \times KM$ and $KM \times 1$, respectively, and the dimensions of 
-$\mathbf{V}$ and $\mathbf{w}$ are $T \times TJ$ and $TJ \times 1$, 
+where, letting $\mathbf{z}=[\mathbf{z}_1' ~ \mathbf{z}_2' ~ \cdots ~ 
+\mathbf{z}_K' ]'$ and $\mathbf{v}=[\mathbf{v}_1' ~ \mathbf{v}_2' ~ 
+\cdots ~ \mathbf{v}_T' ]'$, 
+$\mathbf{Z}= (\mathbf{I}_K \otimes \mathbf{1}_M')\mathbf{z}$ and
+$\mathbf{V}= (\mathbf{I}_T \otimes \mathbf{1}_J')\mathbf{v}$
+where $\mathbf{1}$ denotes a vector of ones, $\mathbf{I}$ is the 
+identity matrix, and $\otimes$ is the Kronecker product.
+Further, $\mathbf{p} = [\mathbf{p}_1' ~ \mathbf{p}_2' ~ \cdots ~ 
+\mathbf{p}_K' ]'$ and $\mathbf{w} = [\mathbf{w}_1' ~ \mathbf{w}_2' 
+~ \cdots ~ \mathbf{w}_T' ]'$.
+The dimensions of $\mathbf{Z}$ and $\mathbf{V}$ are then 
+$K \times KM$ and $T \times TJ$, respectively, and the dimensions of 
+$\mathbf{p}$ and $\mathbf{w}$ are $KM \times 1$ and $TJ \times 1$, 
 respectively.
 It should be noted that while it is possible to construct unbounded and 
 continuous supports,%
@@ -262,8 +243,8 @@ subject to
 \end{equation}
 
 \noindent
-where $\mathbf{1}$ denotes a vector of ones, $\mathbf{I}$ is the 
-identity matrix, and $\otimes$ is the Kronecker product.
+where Eq.\ (\ref{eq: glm}) is the data constraint and Eqs.\ 
+(\ref{eq: pp1})-(\ref{eq: pp2}) are proper probability constraints.
 The reader is referred to \citet[Chap.\ 6]{golan1996} or 
 \citet[Chap.\ 6]{golan2008} for analytical solutions, discussion of 
 efficient techniques for computation of the GCE solutions via the 
@@ -283,9 +264,11 @@ maximizes $H(\mathbf{p},\mathbf{w}) = - \mathbf{p}' \ln
 (\mathbf{p}) - \mathbf{w}' \ln (\mathbf{w})$ subject to the data
 consistency and proper probability constraints. 
 
+\subsection{The Nested GCE Estimator}
+
 A central question in GCE estimation pertains to the choice of 
 priors or reference distributions.
-Prior information is frequently incomplete, noisy, or simply missing, and 
+Prior information is frequently incomplete or simply missing, and 
 the researcher must choose among a possibly infinite number of 
 reference distributions. 
 While in such situations priors are often specified as uniform (i.e.\ 
@@ -293,28 +276,61 @@ $\mathbf{q}=1/M$ and $\mathbf{u}=1/J$), more informative
 reference distributions can enhance small sample performance, especially 
 for ill-posed, ill-conditioned, or noisy problems.%
 \footnote{For example, see \citet{heckelei2003}.}
-Accordingly, in the context of limited \textit{a priori} information, 
-we seek a basis for selecting among alternative plausible reference 
-distributions in an effort to improve the small sample performance of 
-the GCE estimator. 
-To this end, we conduct Monte Carlo experiments to examine competing
-measures or criteria by which informative priors might be chosen.
+Accordingly, we identify a general basis for selecting among alternative 
+reference distributions and develop a nested GCE estimator that improves 
+upon the small sample performance of the GCE estimator. 
+
+Consider the choice of prior in the context of GCE estimation of the simple 
+linear model as outlined above.
+Our nested GCE estimator simply minimizes Eq.\ (\ref{eq: ce}) subject to 
+Eqs.\ (\ref{eq: glm})-(\ref{eq: pp2}) for (potentially many) alternative prior 
+choices and then selects the model for which $I(\cdot)$ is itself minimized.
+In other words, among the alternative models, we select the model for which the 
+prior and posterior probabilities are ``closest.''
+While computational burden places limits on the quantity of alternative 
+reference distributions incorporated, the below sampling experiments show 
+that a relatively small number of priors is sufficient for the nested GCE 
+estimator to outperform its traditional counterparts (i.e.\ ordinary least 
+squares and other information-theoretic estimators).
+
+The question then remains as to which alternative reference distributions to 
+incorporate.
+Noting that $\mathbf{q}=[\mathbf{q}_1' ~ \mathbf{q}_2' ~ 
+\cdots ~ \mathbf{q}_K' ]'$, for the sake of exposition focus here on the 
+choice of $\mathbf{q}_2$ and let $\mathbf{q}_k$ be uniform for 
+$k=1,3,4,\ldots, K$.%
+\footnote{Each $\mathbf{q}_k$ here is an $M$-dimensional vector of 
+ prior weights for the parameter $\beta_k$.}
+In developing candidate priors, we define proper probabilities on the vector 
+$\mathbf{z}_2$ such that across alternative choices of $\mathbf{q}_2$ the 
+expectation $\mathbf{z}_2'\mathbf{q}_2$  yields values that span the 
+support space. 
+Let $S$ represent all  $M!$ possible permutations of 
+$s = [1 ~ 2 ~ \cdots ~ M]$.
+Normalizing each element of $S$ by $\sum_{m=1}^M m$, it is evident
+that we have $M!$ candidate $M$-dimensional vectors for 
+$\mathbf{q}_2$ that span the support space. 
+Also incorporating the uniform prior $[1/M ~ 1/M ~ \cdots ~ 1/M]$ yields 
+$M! + 1$ priors.
+The nested GCE estimator in this case minimizes Eq.\ (\ref{eq: ce}) subject 
+to Eqs.\ (\ref{eq: glm})-(\ref{eq: pp2}) after inserting into $\mathbf{q}$ 
+each of the $M! + 1$ priors.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%% Monte Carlo Experiment %%%%%%%%%
+%%%%%%%%% Sampling Experiments %%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Monte Carlo Experiment}
+\section{Sampling Experiments}
 \label{sec: mce}
 
-For each replication in the Monte Carlo experiments, our objective is to 
-minimize Eq.\ (\ref{eq: ce}) subject to Eqs.\ (\ref{eq: glm})-(\ref{eq: pp2}) 
+For each replication in the sampling experiments our objective is to minimize 
+$I(\cdot)$ subject to the data consistency and proper probability constraints 
 for alternative choices of $\mathbf{q}$, the prior weights for the parameter 
 $\mathbf{\beta}$. 
-To measure the performance of each reference distribution we focus on the 
-mean squared error $MSE(\hat{\mathbf{\beta}}) = 
-E[(\hat{\mathbf{\beta}}- \mathbf{\beta})^2]$.
-In seeking a basis for selecting among alternative priors, then, the 
+To measure the performance of each prior we focus on the mean squared 
+error $MSE(\hat{\mathbf{\beta}}) = E[(\hat{\mathbf{\beta}}- 
+\mathbf{\beta})^2]$.
+To examine the basis for selecting among alternative priors, the 
 relationship between $MSE(\hat{\mathbf{\beta}})$ and three competing 
 measures or criteria is examined: (1) total cross entropy $I({\mathbf{p}, 
 \mathbf{q}, \mathbf{w}, \mathbf{u}}) = 
@@ -346,11 +362,10 @@ for each replication based on the observed $\mathbf{y}$.
 Regarding prior information, we use uniform priors on the error term (i.e.\ 
 $\mathbf{u} = 1/J = 1/3$).
 With respect to prior probabilities on the signal, let $\mathbf{q} = 
-[\mathbf{q}_1, \mathbf{q}_2, \mathbf{q}_3]'$ represent prior 
-information on the respective elements of the parameter vector (e.g.\ 
-the prior mean on $\beta_2$ is $\mathbf{z}_2' \mathbf{q}_2$).
-While we let $\mathbf{q}_1 = \mathbf{q}_3 = 1/M = 1/3$ (i.e.\
-uniform), we estimate the model with strategic alternative specifications 
+[\mathbf{q}_1', \mathbf{q}_2', \mathbf{q}_3']'$ represent prior 
+information on the respective elements of the parameter vector.
+As in Section \ref{sec: gce}, we let $\mathbf{q}_1 = \mathbf{q}_3 = 1/M 
+= 1/3$ (i.e.\ uniform) and estimate the model with alternative specifications 
 of $\mathbf{q}_2$ (see Appendix for details).% 
 \footnote{That is, the focus here is on examining alternative reference 
 distributions for the parameter $\beta_2$. 
@@ -361,26 +376,26 @@ prior on $\beta_2$ affects the estimation of other parameters.}
 Finally, the experiment is conducted with $N=1,000$ replications and 
 performance is referenced against the OLS estimator.
 
-As mentioned, we also conduct experiments with different parameter 
-values, sample sizes, degrees of correlation, and levels of noise. 
-Regarding parameter values, in addition to $\mathbf{\beta}=[1,-5,2]$, we
-use the parameter vectors $[1,-50,2]'$ and $[10,-50,20]'$. 
-Denote these parameter vectors $\mathbf{\beta}^1$, 
-$\mathbf{\beta}^2$, and $\mathbf{\beta}^3$, repectively.
-With respect to sample sizes, beyond $T=10$ we consider $T=20, 50, 100, 
-\text{and } 500$. 
-Further, while in the baseline $\mathbf{x}_3 \sim U(0, 20)$, we 
-additionally introduce correlation among covariates and conduct 
-experiments where $\mathbf{x}_3 \sim 2 \mathbf{x}_2 + N(0, 5)$.
-Finally, we increase the level of noise in the experiments and let 
-$\mathbf{\varepsilon}\sim N(0,5)$.
-There are, thus, a total of 45 experimental specifications. 
-That is, for each parameter vector, the experiments are conducted with 
-five alternative sample sizes, where for each sample size we consider 
-a baseline, well-behaved case along with collinear and noisy cases.%
-\footnote{The Monte Carlo experiments were implemented in Python 
-2.7.3. 
-Computer code is available upon request.}
+%As mentioned, we also conduct experiments with different parameter 
+%values, sample sizes, degrees of correlation, and levels of noise. 
+%Regarding parameter values, in addition to $\mathbf{\beta}=[1,-5,2]$, we
+%use the parameter vectors $[1,-50,2]'$ and $[10,-50,20]'$. 
+%Denote these parameter vectors $\mathbf{\beta}^1$, 
+%$\mathbf{\beta}^2$, and $\mathbf{\beta}^3$, repectively.
+%With respect to sample sizes, beyond $T=10$ we consider $T=20, 50, 100, 
+%\text{and } 500$. 
+%Further, while in the baseline $\mathbf{x}_3 \sim U(0, 20)$, we 
+%additionally introduce correlation among covariates and conduct 
+%experiments where $\mathbf{x}_3 \sim 2 \mathbf{x}_2 + N(0, 5)$.
+%Finally, we increase the level of noise in the experiments and let 
+%$\mathbf{\varepsilon}\sim N(0,5)$.
+%There are, thus, a total of 45 experimental specifications. 
+%That is, for each parameter vector, the experiments are conducted with 
+%five alternative sample sizes, where for each sample size we consider 
+%a baseline, well-behaved case along with collinear and noisy cases.%
+%\footnote{The sampling experiments were implemented in Python 
+%2.7.3. 
+%Computer code is available upon request.}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%% Results %%%%%%%%%%%%%%
@@ -388,13 +403,6 @@ Computer code is available upon request.}
 
 \section{Results}
 \label{sec: results}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%% Application %%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\section{Application}
-\label{sec: app}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%% Conclusions %%%%%%%%%%%%%
@@ -411,34 +419,37 @@ Computer code is available upon request.}
 \section*{Appendix}
 \label{sec: appendix}
 
-In developing candidate priors on $\mathbf{p}_2$ 
-(i.e.\ $\mathbf{q}_2$), it is necessary to define proper probabilities on
-the vector $\mathbf{z}_2 = [-200, 0, 200]$ such that across alternative 
-choices of $\mathbf{q}_2$ the expectation $\mathbf{z}_2'\mathbf{q}_2$  
-yields values that span the relevant portion of the support space. 
-As such, the choice was made to use the following realizations of 
-$\mathbf{q}_2$:
+In line with Section \ref{sec: gce}, for $M=3$, $S$ represents the $3! = 3 
+\times 2 \times 1 = 6$ permutations of $s = [1, 2, 3]$. 
+Normalizing each element by $\sum_{m=1}^{3} m = 6$, we then have all 
+permutations of $s = [1/6, 2/6, 3/6] = [0.167, 0.333, 0.500]$.
+To be explicit, in $S$ we then have
 \begin{align*}
 [0.167, 0.333, 0.500] \\
 [0.167, 0.500, 0.333] \\
 [0.333, 0.167, 0.500] \\
 [0.333, 0.500, 0.167] \\
 [0.500, 0.167, 0.333] \\
-[0.500, 0.333, 0.167] \\
+[0.500, 0.333, 0.167] 
+\end{align*}
+
+\noindent
+To this we have chosen to add
+\begin{align*}
 [0.650, 0.300, 0.050] \\
 [0.050, 0.300, 0.650] \\
 [0.333, 0.333, 0.333]
 \end{align*}
 
 \noindent
-It is readily verifiable that these priors indeed span the support space in
-a reasonable manner.
-While it is clearly feasible to incorporate additional priors, such additions 
-increase the computational burden of the Monte Carlo experiments.
-The above listing appears sufficient for illustrating our estimation technique.
-Empirical applications of the procedure may, however, benefit from 
-additional reference distributions.
-Finally, it should be noted that the uniform prior is included in the above 
+The former two priors in the above reach the more extreme parts of the 
+support space and the latter prior is simply the uniform.
+For each replication in the sampling experiments, $I(\cdot)$ is then 
+minimized (subject to the relevant constraints) a total of nine times where
+each time $\mathbf{q}_2$ take on a different element in $S$. 
+While it is clearly feasible to incorporate additional priors, the above listing 
+appears sufficient for illustrating our estimation technique.
+Finally, it should be noted that the uniform prior is in the above 
 and, as such, the GME estimator is included as a special case in the 
 experiments. 
 
