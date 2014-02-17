@@ -2,7 +2,7 @@
 
 Key notation:
     T: Number of observations
-    K: Number of covariates (including intercept)
+    K: Number of covariates 
     M: Parameter support points
     J: Error support points
     y: Dependent variable (T-by-1)
@@ -12,6 +12,13 @@ Key notation:
     z: Parameter support vector (M-by-1)
     v: Noise support vector (J-by-1)
     lmda: Lagrange multipliers (T-by-1)
+    
+Results:     
+    (1) When support is too narrow our procedure is effective and improves
+    upon GME. However, in this case we do not outperform OLS. 
+    (2) When support is appropriately specified our procedure is effective 
+    and outperforms both GME and OLS.
+    (3) When support is very wide ...
     
 """
 
@@ -28,7 +35,7 @@ import time
 class Prior(object):
     def __init__(self, T, N, parms, a, b, corr, rho, proc, sd, z, x0, path):
         """Initializes Prior class."""
-        K = len(parms[1]) # number of covariates (including intercept)
+        K = len(parms[1]) # number of covariates
         M = J = len(z) # number of parameter and error support points
         X = self.xdata(T, K, a, b, corr)
         z = np.array(z)[:, np.newaxis]
@@ -76,7 +83,7 @@ class Prior(object):
         assert np.shape(u)[1] == 1, 'u dimension issue'
         assert np.shape(z)[1] == 1, 'z dimension issue'
         assert type(sd) == int, 'sd must be integer'
-        assert corr==0 or corr==1 or corr==2, 'corr misspecified' 
+        assert corr==0 or corr==1, 'corr misspecified' 
         assert proc==1 or proc==2, 'proc is misspecified'
         T, K = np.shape(X)
         for i in range(N):
@@ -389,44 +396,6 @@ class Prior(object):
         assert np.allclose(mu, cn), 'condition number issue' 
         assert np.shape(X) == (T, K), 'X dimension issue'
         return X
-            
-#    def xdata(self, T, K, a, b, corr):
-#        """Returns covariate data.
-#    
-#        Parameters
-#        ----------
-#        T : int
-#            Number of observations
-#        K : int
-#            Number of covariates (including intercept)
-#        a : int
-#            Lower bound on uniform distribution
-#        b : int
-#            Upper bound on uniform distribution
-#        corr : int
-#            Correlated covariates
-#    
-#        """
-#        assert T > 0 and K > 0, 'inputs must be non-negative'
-#        assert a >= 0 and b > 0, 'inputs must be non-negative'
-#        assert b > a, 'a must be less than b'
-#        assert corr==0 or corr==1 or corr==2, 'corr misspecified'       
-#        if corr==0: # uncorrelated covariates
-#            X1 = np.random.uniform(a, b, size=(T, K - 1)) 
-#            X = np.hstack((np.ones(T)[:, np.newaxis], X1))
-#        elif corr==1:  # one pair correlated
-#            assert K > 2, 'if corr==1, K must be greater than two'
-#            X1 = np.random.uniform(a, b, size=(T, K - 2)) 
-#            X2 = 2*X1[:,0][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))
-#            X = np.hstack((np.ones(T)[:, np.newaxis], X1, X2))        
-#        else: # two pairs correlated
-#            assert K > 5, 'if corr==2, K must be greater than five'
-#            X1 = np.random.uniform(a, b, size=(T, K - 3)) 
-#            X2 = 2*X1[:,0][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))            
-#            X3 = -3*X1[:,2][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))
-#            X = np.hstack((np.ones(T)[:, np.newaxis], X1, X2, X3))  
-#        assert np.shape(X) == (T, K), 'X dimension issue'
-#        return X
     
     def ydata(self, X, parms, sd):
         """Returns dependent variable.
@@ -566,7 +535,7 @@ class Prior(object):
             
         """
         assert type(T)==type(M)==type(sd)==int, 'T, M, and sd must be integers'
-        assert corr==0 or corr==1 or corr==2, 'corr misspecified' 
+        assert corr==0 or corr==1, 'corr misspecified' 
         assert proc==1 or proc==2, 'proc is misspecified'
         nstr = str(parms[0]) + str(T) + str(sd) + str(corr) + str(proc)
         fname = path + nstr + 'out' + '.csv'
@@ -622,9 +591,12 @@ class Prior(object):
         data = path + nstr + 'out'  + '.csv'
         mresults = path + nstr + 'mresults' + '.csv'
         vresults = path + nstr + 'vresults' + '.csv'
-        presults = path + nstr + 'presults' + '.csv'
-        df_raw = pd.read_csv(data) 
-        df = df_raw[df_raw['success']==1] # delete unsuccessful entries
+        presults = path + nstr + 'presults' + '.csv' 
+        df = pd.read_csv(data) 
+        # delete unsuccessful entries while preserving OLS estimates
+        df.ix[:,'b0':'b2'][df['success']==0] = np.nan
+        df.ix[:,'dev_ent0':'dev_ent'][df['success']==0] = np.nan
+        df.ix[:,'ce_signal':'success'][df['success']==0] = np.nan        
         # group by prior
         prior = [i for i in df.columns if i.startswith('prior')]
         grouped = df.groupby(prior) 
@@ -743,11 +715,11 @@ if __name__ == "__main__":
     parms = parms_menu[0] # parameters values
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
-    corr = 0 # pairs of correlated covariates: [0, 1, 2]
-    rho = 2.0 # dispersion control parameter
+    corr = 0 # correlated covariates: [0, 1]
+    rho = 0.1 # dispersion control parameter
     proc = 1 # number of coefficients receiving prior procedure: [1, 2]
     sd = 2 # standard deviation on model noise: [2, 5]
-    z = [-10., 0., 10.] # support for parameters
+    z = [-500., 0., 500.] # support for parameters
     x0 = np.zeros(T) # starting values
     path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
     #path = '/home/hh9467a/Output/'
