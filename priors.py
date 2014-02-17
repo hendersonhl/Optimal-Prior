@@ -26,14 +26,14 @@ import matplotlib.pyplot as plt
 import time
 
 class Prior(object):
-    def __init__(self, T, N, parms, a, b, corr, proc, sd, z, x0, path):
+    def __init__(self, T, N, parms, a, b, corr, rho, proc, sd, z, x0, path):
         """Initializes Prior class."""
         K = len(parms[1]) # number of covariates (including intercept)
         M = J = len(z) # number of parameter and error support points
         X = self.xdata(T, K, a, b, corr)
         z = np.array(z)[:, np.newaxis]
         u = (1.0/J)*np.ones(T*J)[:, np.newaxis] # uniform prior on noise
-        priors = self.priors(M, proc)     
+        priors = self.priors(M, rho, proc)     
         # run experiment
         self.experiment(N, M, X, u, z, priors, parms, sd, x0, corr, proc, path)    
         # calculate results
@@ -356,7 +356,7 @@ class Prior(object):
         assert np.isfinite(probs).all() == True, 'probs not finite'
         assert np.shape(probs) == (T*J, 1), 'probs dimension issue'
         return probs
-            
+        
     def xdata(self, T, K, a, b, corr):
         """Returns covariate data.
     
@@ -365,7 +365,7 @@ class Prior(object):
         T : int
             Number of observations
         K : int
-            Number of covariates (including intercept)
+            Number of covariates
         a : int
             Lower bound on uniform distribution
         b : int
@@ -377,23 +377,56 @@ class Prior(object):
         assert T > 0 and K > 0, 'inputs must be non-negative'
         assert a >= 0 and b > 0, 'inputs must be non-negative'
         assert b > a, 'a must be less than b'
-        assert corr==0 or corr==1 or corr==2, 'corr misspecified'       
-        if corr==0: # uncorrelated covariates
-            X1 = np.random.uniform(a, b, size=(T, K - 1)) 
-            X = np.hstack((np.ones(T)[:, np.newaxis], X1))
-        elif corr==1:  # one pair correlated
-            assert K > 2, 'if corr==1, K must be greater than two'
-            X1 = np.random.uniform(a, b, size=(T, K - 2)) 
-            X2 = 2*X1[:,0][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))
-            X = np.hstack((np.ones(T)[:, np.newaxis], X1, X2))        
-        else: # two pairs correlated
-            assert K > 5, 'if corr==2, K must be greater than five'
-            X1 = np.random.uniform(a, b, size=(T, K - 3)) 
-            X2 = 2*X1[:,0][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))            
-            X3 = -3*X1[:,2][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))
-            X = np.hstack((np.ones(T)[:, np.newaxis], X1, X2, X3))  
+        assert corr==0 or corr==1, 'corr misspecified'      
+        mu=1.0 if corr==0 else 90.0 # specify condition number  
+        temp = np.random.uniform(a, b, size=(T, K)) 
+        U, s, V = np.linalg.svd(temp, full_matrices=False)
+        snew = np.ones(K)
+        snew[0] = np.sqrt(2.0/(1 + mu))
+        snew[K - 1] = np.sqrt(2.0*mu/(1 + mu))
+        X = np.dot(U, np.dot(np.diag(snew), V))
+        cn = np.linalg.cond(np.dot(X.T, X))
+        assert np.allclose(mu, cn), 'condition number issue' 
         assert np.shape(X) == (T, K), 'X dimension issue'
         return X
+            
+#    def xdata(self, T, K, a, b, corr):
+#        """Returns covariate data.
+#    
+#        Parameters
+#        ----------
+#        T : int
+#            Number of observations
+#        K : int
+#            Number of covariates (including intercept)
+#        a : int
+#            Lower bound on uniform distribution
+#        b : int
+#            Upper bound on uniform distribution
+#        corr : int
+#            Correlated covariates
+#    
+#        """
+#        assert T > 0 and K > 0, 'inputs must be non-negative'
+#        assert a >= 0 and b > 0, 'inputs must be non-negative'
+#        assert b > a, 'a must be less than b'
+#        assert corr==0 or corr==1 or corr==2, 'corr misspecified'       
+#        if corr==0: # uncorrelated covariates
+#            X1 = np.random.uniform(a, b, size=(T, K - 1)) 
+#            X = np.hstack((np.ones(T)[:, np.newaxis], X1))
+#        elif corr==1:  # one pair correlated
+#            assert K > 2, 'if corr==1, K must be greater than two'
+#            X1 = np.random.uniform(a, b, size=(T, K - 2)) 
+#            X2 = 2*X1[:,0][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))
+#            X = np.hstack((np.ones(T)[:, np.newaxis], X1, X2))        
+#        else: # two pairs correlated
+#            assert K > 5, 'if corr==2, K must be greater than five'
+#            X1 = np.random.uniform(a, b, size=(T, K - 3)) 
+#            X2 = 2*X1[:,0][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))            
+#            X3 = -3*X1[:,2][:,np.newaxis] + np.random.normal(0, 5, size=(T, 1))
+#            X = np.hstack((np.ones(T)[:, np.newaxis], X1, X2, X3))  
+#        assert np.shape(X) == (T, K), 'X dimension issue'
+#        return X
     
     def ydata(self, X, parms, sd):
         """Returns dependent variable.
@@ -416,14 +449,16 @@ class Prior(object):
         y = np.dot(X, parms.T) + e
         assert np.shape(y) == (T, 1), 'y dimension issue'
         return y
-
-    def priors(self, M, proc):
-        """Returns all possible priors.
+        
+    def priors(self, M, rho, proc):
+        """Returns prior choices.
     
         Parameters
         ----------
         M : int
             Number of support points
+        rho : float
+            Dispersion control parameter
         proc : int
             Number of coefficients receiving prior procedure
         
@@ -434,13 +469,10 @@ class Prior(object):
         seq = xrange(1, M + 1)
         prior = []
         for perm in permutations(seq, M):
-            normalization = (M * (M + 1)) / 2.
-            prior.append(np.asarray(perm)/normalization)
-        # addditional priors
-        prior.append(np.ones(M) / M)
-        prior.append(np.array([0.65,0.30,0.05]))
-        prior.append(np.array([0.05,0.30,0.65]))
-        labels = range(1, len(prior) + 1)
+            temp = np.asarray(perm)**rho
+            prior.append(temp / np.sum(temp))                           
+        prior.append(np.ones(M) / M)   # add uniform prior    
+        labels = range(1, len(prior) + 1)       
         if proc==2: # conduct prior procedure on two coefficients
             prod1 = product(prior, prior)
             prod2 = product(labels, labels)
@@ -701,24 +733,25 @@ if __name__ == "__main__":
 
     # user inputs
     T = 10 # sample size: [10, 20, 50, 100, 500]
-    N = 1000 # number of replications
+    N = 100 # number of replications
     parms_menu = [(0, [1., -5., 2.]),
                   (1, [1., -50., 2.]),
                   (2, [10., -50., 20.]),
                   (3, [1., -5., 2., -3., 8., 6., -2., -7., 4., -1.]),
                   (4, [1., -50., 20., -3., 8., 6., -2., -7., 4., -1.]), 
                   (5, [10., -50., 20., -30., 80., 60., -20., -70., 40., -10.])]
-    parms = parms_menu[2] # parameters values
+    parms = parms_menu[0] # parameters values
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
     corr = 0 # pairs of correlated covariates: [0, 1, 2]
+    rho = 2.0 # dispersion control parameter
     proc = 1 # number of coefficients receiving prior procedure: [1, 2]
-    sd = 5 # standard deviation on model noise: [2, 5]
-    z = [-200., 0., 200.] # support for parameters
+    sd = 2 # standard deviation on model noise: [2, 5]
+    z = [-10., 0., 10.] # support for parameters
     x0 = np.zeros(T) # starting values
     path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
     #path = '/home/hh9467a/Output/'
     
     # run experiment
-    exp = Prior(T, N, parms, a, b, corr, proc, sd, z, x0, path)
+    exp = Prior(T, N, parms, a, b, corr, rho, proc, sd, z, x0, path)
 
