@@ -21,12 +21,7 @@ Results:
     (3) When support is very wide our procedure is ineffective as the data
     tends to overwhelm the prior. While we typically beat OLS in this 
     scenario we do not necessarily beat GME. 
-    
-To do:
-    (1) Fix graph labels (e.g. 123, 132, 213, ...)
-    (2) Label output for different supports and dispersion parameters
-    (3) Double check code
-    
+        
 """
 
 import numpy as np
@@ -51,9 +46,9 @@ class Prior(object):
         # run experiment
         self.experiment(N, M, X, u, z, priors, parms, sd, x0, corr, proc, path)    
         # calculate results
-        self.results(path, T, sd, corr, parms, proc)
+        self.results(path, T, sd, corr, parms, z, proc)
         # create graphs
-        self.graphs(path, T, sd, corr, parms, proc)
+        self.graphs(path, T, sd, corr, parms, z, proc)
                 
     def experiment(self, N, M, X, u, z, priors, parms, sd, x0, corr, proc, path):
         """Returns experiment results.
@@ -107,7 +102,7 @@ class Prior(object):
             data = np.hstack((np.vstack((priors[0])), np.vstack((priors[1])),
                 np.vstack((coeff)), np.vstack((ols)), np.vstack((dev_ent)), 
                 np.vstack((dev_ols)), np.vstack((ent)), np.vstack((success))))  
-            self.out(path, T, M, parms, sd, corr, data, i, proc) # write results 
+            self.out(path, T, M, parms, sd, corr, data, i, z, proc)  
             print 'Exit replication {0} ({1} seconds wall time)'.format(i + 1,
                 time.time() - t0 )
         
@@ -516,7 +511,7 @@ class Prior(object):
         assert np.shape(sq_dev)[1] == 1, 'sq_dev dimension issue'
         return sq_dev.T 
  
-    def out(self, path, T, M, parms, sd, corr, data, n, proc):
+    def out(self, path, T, M, parms, sd, corr, data, n, z, proc):
         """Writes model output to file. 
         
         Parameters
@@ -537,6 +532,8 @@ class Prior(object):
             Data to be written to file
         n : int
             Replication number
+        z : ndarray
+            Parameter support vector
         proc : int
             Number of coefficients receiving prior procedure 
             
@@ -544,7 +541,9 @@ class Prior(object):
         assert type(T)==type(M)==type(sd)==int, 'T, M, and sd must be integers'
         assert corr==0 or corr==1, 'corr misspecified' 
         assert proc==1 or proc==2, 'proc is misspecified'
-        nstr = str(parms[0]) + str(T) + str(sd) + str(corr) + str(proc)
+        nstr1 = str(parms[0]) + str(T) + str(sd)
+        nstr2 = str(corr) + str(int(z[-1][0])) + str(proc)
+        nstr = nstr1 + nstr2 
         fname = path + nstr + 'out' + '.csv'
         prior, b, ols, dev_ent, dev_ols = [], [], [], [], []  
         if n==0: # write header and data
@@ -573,7 +572,7 @@ class Prior(object):
                     strdata = [str(j) for j in i]
                     f.write('\n' + ','.join(strdata))
                     
-    def results(self, path, T, sd, corr, parms, proc):
+    def results(self, path, T, sd, corr, parms, z, proc):
         """Calculates post-simulation results.
         
         Parameters
@@ -588,13 +587,17 @@ class Prior(object):
             Correlated covariates
         parms : tuple
             Model parameters
+        z : ndarray
+            Parameter support vector
         proc : int
             Number of coefficients receiving prior procedure 
         
         """
         assert type(T) == type(sd) == int, 'T and sd must be integers' 
-        assert proc==1 or proc==2, 'proc is misspecified'    
-        nstr = str(parms[0]) + str(T) + str(sd) + str(corr) + str(proc)
+        assert proc==1 or proc==2, 'proc is misspecified'         
+        nstr1 = str(parms[0]) + str(T) + str(sd)
+        nstr2 = str(corr) + str(int(z[-1][0])) + str(proc)
+        nstr = nstr1 + nstr2            
         data = path + nstr + 'out'  + '.csv'
         mresults = path + nstr + 'mresults' + '.csv'
         vresults = path + nstr + 'vresults' + '.csv'
@@ -624,7 +627,7 @@ class Prior(object):
         variances.to_csv(vresults) 
         correlations.to_csv(presults)
                       
-    def graphs(self, path, T, sd, corr, parms, proc): 
+    def graphs(self, path, T, sd, corr, parms, z, proc): 
         """Calculates post-simulation graphs.
         
         Parameters
@@ -639,13 +642,17 @@ class Prior(object):
             Correlated covariates
         parms : tuple
             Model parameters
+        z : ndarray
+            Parameter support vector
         proc : int
             Number of coefficients receiving prior procedure 
         
         """  
         assert type(T) == type(sd) == int, 'T and sd must be integers' 
-        assert proc==1 or proc==2, 'proc is misspecified'    
-        nstr = str(parms[0]) + str(T) + str(sd) + str(corr) + str(proc)
+        assert proc==1 or proc==2, 'proc is misspecified'            
+        nstr1 = str(parms[0]) + str(T) + str(sd)
+        nstr2 = str(corr) + str(int(z[-1][0])) + str(proc)
+        nstr = nstr1 + nstr2 
         data = path + nstr + 'out'  + '.csv'
         figure = path + nstr + 'figure'    
         df_raw = pd.read_csv(data) 
@@ -663,7 +670,7 @@ class Prior(object):
             for i in range(npriors)] # list of RGB tuples   
         for i in lst:
             plt.figure()
-            plt.xlabel('Squared Deviation')
+            plt.xlabel('Mean Squared Error')
             plt.ylabel('Cross Entropy')
             if i[2]=='means':
                 plt.scatter(means[i[0]], means[i[1]], marker='o', c='k')
@@ -726,7 +733,7 @@ if __name__ == "__main__":
     rho = 2.0 # dispersion control parameter
     proc = 1 # number of coefficients receiving prior procedure: [1, 2]
     sd = 2 # standard deviation on model noise: [2, 5]
-    z = [-100., 0., 100.] # support for parameters
+    z = [-10., 0., 10.] # support for parameters
     x0 = np.zeros(T) # starting values
     path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
     #path = '/home/hh9467a/Output/'
