@@ -195,6 +195,7 @@ reparameterized as follows:
 \begin{equation}
 \mathbf{y} = \mathbf{X\beta} + \mathbf{\varepsilon} = 
 \mathbf{X Z p} + \mathbf{V w}
+\label{eq: reparm}
 \end{equation}
 
 \noindent
@@ -312,12 +313,12 @@ $k=1,3,4,\ldots, K$.%
  prior weights for the parameter $\beta_k$.}
 In developing candidate priors, we define proper probabilities on the vector 
 $\mathbf{z}_2$ such that across alternative choices of $\mathbf{q}_2$ the 
-expectation $\mathbf{z}_2'\mathbf{q}_2$  yields values that span the 
-support space. 
+expectation $\mathbf{z}_2'\mathbf{q}_2$  yields values that appropriately
+span the support space. 
 Let $S$ represent all  $M!$ possible permutations of 
 $s = [1^\rho ~ 2^\rho ~ \cdots ~ M^\rho]$.
-Normalizing each element of $S$ by $\sum_{m=1}^M m^\rho$, it is evident
-that we have $M!$ candidate $M$-dimensional vectors for 
+Normalizing each element of $S$ by $\sum_{m=1}^M m^\rho$, it is 
+readily verified that we have $M!$ candidate $M$-dimensional vectors for 
 $\mathbf{q}_2$ that span the support space.%
 \footnote{The parameter $\rho \in [-\infty, \infty]$ permits the researcher
 to control the dispersion of the alternative prior means about the center of the 
@@ -346,66 +347,65 @@ error $MSE(\hat{\mathbf{\beta}}) = E[(\hat{\mathbf{\beta}}-
 \mathbf{\beta})^2]$.
 To establish a basis for selecting among alternative priors, the relationship 
 between $MSE(\hat{\mathbf{\beta}})$ and $E[I(\cdot)]$ is examined.
-This relationship is considered for different parameter values, sample sizes, 
-degrees of correlation among covariates, and levels of noise.
+This relationship is considered for different sample sizes, levels of noise, 
+degrees of correlation among covariates, and parameter support vectors.
 Further, the performance of our nested GCE estimator is referenced 
 against the OLS and GME estimators.
 
-Consider a baseline scenario where the data generation process is as follows:
-\begin{equation}
-\mathbf{y} = \mathbf{XZp} + \mathbf{Vw}
-= \beta_1\mathbf{x}_1 + \beta_2\mathbf{x}_2
-+ \beta_3\mathbf{x}_3 + \mathbf{\varepsilon} 
-\end{equation}
-
-\noindent
-where the number of observations $T=10$, $\mathbf{\beta}= [\beta_1 ~
-\beta_2 ~ \beta_3]'=[1 ~ -5 ~ 2]'$, $\mathbf{x}_1=1$ is the intercept, 
-$\mathbf{x}_2 \sim U(0,20)$, $\mathbf{x}_3 \sim U(0,20)$, and 
-$\mathbf{\varepsilon}\sim N(0,2)$.
-Letting $M=3$, the support vector on $\mathbf{p}_k$ is $\mathbf{z}_k 
-= [- 200 ~ 0 ~ 200]'$.
-Further, letting $J=3$ and using the three-sigma rule 
-\citep{pukelsheim1994}, the support vector on $\mathbf{w}_t$ is 
-$\mathbf{v}_t = [- 3\sigma_y ~ 0 ~ 3\sigma_y]'$, which is calculated 
-uniquely for each replication based on the observed $\mathbf{y}$.
-Regarding prior information, we use uniform priors on the error term (i.e.\ 
-$\mathbf{u} = 1/J = 1/3$).
-With respect to prior probabilities on the signal, let $\mathbf{q} = 
-[\mathbf{q}_1' ~ \mathbf{q}_2' ~ \mathbf{q}_3']'$ represent prior 
-information on the respective elements of the parameter vector.
+Consider a baseline scenario where, referencing Eq.\ (\ref{eq: reparm}),
+$\mathbf{X}$ is a $10 \times 3$ design matrix where $\mathbf{x}_k \sim 
+U(0,20)$, $\mathbf{\beta}= [\beta_1 ~ \beta_2 ~ \beta_3]'=[1 ~ -5 ~ 2]'$, 
+and $\mathbf{\varepsilon} \sim N(0,2)$.
+In order to control correlation among covariates, the condition
+number $\kappa(\mathbf{X}'\mathbf{X})=1$ is specified \textit{a priori}
+by appropriately replacing the eigenvalues in the singular value 
+decomposition of $\mathbf{X}$.%
+\footnote{See \citet[pg.\ 133]{golan1996} and references therein for 
+details.}
+Further, letting $M=J=3$, the support vector on $\mathbf{p}_k$ is 
+$\mathbf{z}_k = [- 10 ~ 0 ~ 10]'$ and the support vector on $\mathbf{w}_t$ 
+is $\mathbf{v}_t = [- 3\sigma_y ~ 0 ~ 3\sigma_y]'$.%
+\footnote{The error support vector is based on the three-sigma
+rule \citep{pukelsheim1994} and is calculated 
+uniquely for each replication based on the observed $\mathbf{y}$.}
+Regarding prior information, let $\mathbf{q} = [\mathbf{q}_1' ~ 
+\mathbf{q}_2' ~ \mathbf{q}_3']'$ represent prior information on the 
+respective elements of the parameter vector.
 As in Section \ref{sec: ngce}, we let $\mathbf{q}_1 = \mathbf{q}_3 = 1/M 
-= 1/3$ (i.e.\ uniform) and estimate the model with the discussed alternative 
-specifications of $\mathbf{q}_2$.% 
+= 1/3$ (i.e.\ uniform) and estimate the model using $\rho=2$  in the 
+discussed alternative specifications of $\mathbf{q}_2$.% 
 \footnote{That is, the focus here is on examining alternative reference 
 distributions for the parameter $\beta_2$. 
 However, with respect to the performance of the estimator, we are 
 interested in the MSE across all parameters.
 As will be seen, with correlation among covariates the specification of the 
 prior on $\beta_2$ affects the estimation of other parameters.}
+Throughout we also use uniform priors on the error term 
+(i.e.\ $\mathbf{u} = 1/J = 1/3$).
 Finally, the experiment is conducted with $N=1,000$ replications.
 
-As mentioned, we also conduct experiments with different parameter 
-values, sample sizes, degrees of correlation, and levels of noise. 
-Regarding parameter values, in addition to $\mathbf{\beta}=[1 ~ -5 ~ 2]'$, 
-we use the parameter vector $\mathbf{\beta}=[10 ~ -50 ~ 20]'$. 
-With respect to sample sizes, beyond $T=10$ we consider $T=20, 50, 100, 
+As mentioned, we also conduct experiments with different sample sizes, 
+levels of noise, degrees of correlation among covariates, and parameter 
+support vectors.
+Regarding sample sizes, beyond $T=10$ we consider $T=20, 50, 100, 
 \text{and } 500$. 
-Further, while in the baseline $\mathbf{x}_3 \sim U(0, 20)$, we 
-additionally introduce correlation among covariates and conduct 
-experiments where $\mathbf{x}_3 \sim 2 \mathbf{x}_2 + N(0, 5)$.
-Finally, we increase the level of noise in the experiments and let 
-$\mathbf{\varepsilon}\sim N(0,5)$.
-As summarized in Table \ref{tbl: exp}, there are then a total of 15 
-experimental specifications for each parameter vector. 
-That is, for each parameter vector, the experiments are conducted with 
-five alternative sample sizes, where for each sample size we consider 
-a baseline, well-behaved case along with collinear and noisy cases.%
+With respect to noise, we increase the level of noise in the experiments and 
+let $\mathbf{\varepsilon}\sim N(0,5)$.
+Further, while in the baseline $\kappa(\mathbf{X}'\mathbf{X})=1$, we
+also let $\kappa(\mathbf{X}'\mathbf{X})=90$, which represents a 
+moderately ill-conditioned design matrix.
+Finally, we examine the sensitivity of the results to the parameter support
+vector by additionally letting $\mathbf{z}_k = [- 50 ~ 0 ~ 50]'$.
+As summarized in Table \ref{tbl: exp}, there are then a total of 20 
+experimental specifications. 
+That is, the experiments are conducted with five alternative sample sizes, 
+where for each sample size we consider a baseline, well-behaved case along
+with noisy, collinear, and altered-support cases.%
 \footnote{The sampling experiments were implemented in Python 
 2.7.3. 
 We also conducted experiments that used different parameter vectors, 
-increased the number of covariates, and introduced alternative patterns of 
-correlation among covariates.
+increased the number of covariates, and utilized the prior procedure on
+multiple parameters.
 Additional results and computer code are available upon request.}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -438,27 +438,32 @@ caption = {Sampling Experiments},
 captionskip = -2ex,
 pos=htb,
 label = {tbl: exp}
-]{lccc}{
+]{lcccc}{
 }{\hline \hline
 Experiment & \multicolumn{1}{c}{$T$} & 
-\multicolumn{1}{c}{$\mathbf{x}_3$} & 
-\multicolumn{1}{c}{$\varepsilon$} \\ \hline
- 1 & 10 & $\sim U(0, 20)$ & $\sim N(0,2)$ \\ 
- 2 & 10 & $\sim U(0, 20)$ & $\sim N(0,5)$ \\ 
- 3 & 10 & $\sim 2\mathbf{x}_2 + N(0,5)$ & $\sim N(0,2)$ \\ 
- 4 & 20 & $\sim U(0, 20)$ & $\sim N(0,2)$ \\ 
- 5 & 20 & $\sim U(0, 20)$ & $\sim N(0,5)$ \\ 
- 6 & 20 & $\sim 2\mathbf{x}_2 + N(0,5)$ & $\sim N(0,2)$ \\ 
- 7 & 50 & $\sim U(0, 20)$ & $\sim N(0,2)$ \\ 
- 8 & 50 & $\sim U(0, 20)$ & $\sim N(0,5)$ \\ 
- 9 & 50 & $\sim 2\mathbf{x}_2 + N(0,5)$ & $\sim N(0,2)$ \\ 
- 10 & 100 & $\sim U(0, 20)$ & $\sim N(0,2)$ \\ 
- 11 & 100 & $\sim U(0, 20)$ & $\sim N(0,5)$ \\ 
- 12 & 100 & $\sim 2\mathbf{x}_2 + N(0,5)$ & $\sim N(0,2)$ \\ 
- 13 & 500 & $\sim U(0, 20)$ & $\sim N(0,2)$ \\ 
- 14 & 500 & $\sim U(0, 20)$ & $\sim N(0,5)$ \\ 
- 15 & 500 & $\sim 2\mathbf{x}_2 + N(0,5)$ & $\sim N(0,2)$ \\ \hline
-}
+\multicolumn{1}{c}{$\varepsilon$} &
+\multicolumn{1}{c}{$\kappa(\mathbf{X}'\mathbf{X})$} &
+\multicolumn{1}{c}{$\mathbf{z}_k$} \\ \hline
+ 1 & 10 & $N(0,2)$ &   1  & $[-10 ~ 0 ~ 10]'$  \\ 
+ 2 & 10 & $N(0,5)$ &   1  & $[-10 ~ 0 ~ 10]'$ \\ 
+ 3 & 10 & $N(0,2)$ & 90  & $[-10 ~ 0 ~ 10]'$ \\ 
+ 4 & 10 & $N(0,2)$ &   1  & $[-50 ~ 0 ~ 50]'$ \\ 
+ 5 & 20 & $N(0,2)$ &   1  & $[-10 ~ 0 ~ 10]'$  \\ 
+ 6 & 20 & $N(0,5)$ &   1  & $[-10 ~ 0 ~ 10]'$ \\ 
+ 7 & 20 & $N(0,2)$ & 90  & $[-10 ~ 0 ~ 10]'$ \\ 
+ 8 & 20 & $N(0,2)$ &   1  & $[-50 ~ 0 ~ 50]'$ \\ 
+ 9 & 50 & $N(0,2)$ &   1  & $[-10 ~ 0 ~ 10]'$  \\ 
+ 10 & 50 & $N(0,5)$ &   1  & $[-10 ~ 0 ~ 10]'$ \\ 
+ 11 & 50 & $N(0,2)$ & 90  & $[-10 ~ 0 ~ 10]'$ \\ 
+ 12 & 50 & $N(0,2)$ &   1  & $[-50 ~ 0 ~ 50]'$ \\ 
+ 13 & 100 & $N(0,2)$ &   1  & $[-10 ~ 0 ~ 10]'$  \\ 
+ 14 & 100 & $N(0,5)$ &   1  & $[-10 ~ 0 ~ 10]'$ \\ 
+ 15 & 100 & $N(0,2)$ & 90  & $[-10 ~ 0 ~ 10]'$ \\ 
+ 16 & 100 & $N(0,2)$ &   1  & $[-50 ~ 0 ~ 50]'$ \\
+ 17 & 500 & $N(0,2)$ &   1  & $[-10 ~ 0 ~ 10]'$  \\ 
+ 18 & 500 & $N(0,5)$ &   1  & $[-10 ~ 0 ~ 10]'$ \\ 
+ 19 & 500 & $N(0,2)$ & 90  & $[-10 ~ 0 ~ 10]'$ \\ 
+ 20 & 500 & $N(0,2)$ &   1  & $[-50 ~ 0 ~ 50]'$ \\ \hline}
 \normalsize
 
 %In line with Section \ref{sec: ngce}, for $M=3$, $S$ represents the $3! = 3 

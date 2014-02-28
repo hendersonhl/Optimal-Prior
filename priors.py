@@ -18,7 +18,14 @@ Results:
     upon GME. However, in this case we do not outperform OLS. 
     (2) When support is appropriately specified our procedure is effective 
     and outperforms both GME and OLS.
-    (3) When support is very wide ...
+    (3) When support is very wide our procedure is ineffective as the data
+    tends to overwhelm the prior. While we typically beat OLS in this 
+    scenario we do not necessarily beat GME. 
+    
+To do:
+    (1) Fix graph labels (e.g. 123, 132, 213, ...)
+    (2) Label output for different supports and dispersion parameters
+    (3) Double check code
     
 """
 
@@ -716,10 +723,10 @@ if __name__ == "__main__":
     a = 0 # lower bound on uniform dist. of covariates
     b = 20 # upper bound on uniform dist. of covariates
     corr = 0 # correlated covariates: [0, 1]
-    rho = 0.1 # dispersion control parameter
+    rho = 2.0 # dispersion control parameter
     proc = 1 # number of coefficients receiving prior procedure: [1, 2]
     sd = 2 # standard deviation on model noise: [2, 5]
-    z = [-500., 0., 500.] # support for parameters
+    z = [-100., 0., 100.] # support for parameters
     x0 = np.zeros(T) # starting values
     path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
     #path = '/home/hh9467a/Output/'
