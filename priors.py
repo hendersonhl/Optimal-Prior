@@ -39,7 +39,7 @@ class Prior(object):
         """Initializes Prior class."""
         K = len(parms[1]) # number of covariates
         M = J = len(z) # number of parameter and error support points
-        X = self.xdata(T, K, a, b, corr)
+        X = self.X = self.xdata(T, K, a, b, corr)
         z = np.array(z)[:, np.newaxis]
         u = (1.0/J)*np.ones(T*J)[:, np.newaxis] # uniform prior on noise
         priors = self.priors(M, rho, proc)     
@@ -153,7 +153,7 @@ class Prior(object):
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
             result = minimize(obj, x0, args=(q,), method='L-BFGS-B', jac=jac,
-                options={'ftol': 1e-14, 'gtol': 1e-14, 'maxiter': 20000})
+                options={'ftol': 1e-14, 'gtol': 1e-14, 'maxiter': 200})
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
             print 'Optimizer exited successfully: {}'.format(result.success)
             # get output
@@ -297,7 +297,7 @@ class Prior(object):
         assert np.shape(q)[1] == 1, 'q dimension issue' 
         assert np.shape(u)[1] == 1, 'u dimension issue'          
         assert len(pprob) == len(q), "len(pprob) not equal to len(q)"  
-        assert len(wprob) == len(u), "len(wprob) not equal to len(u)"     
+        assert len(wprob) == len(u), "len(wprob) not equal to len(u)"    
         ce_signal = np.sum(pprob * np.log((pprob + 1e-10)/q))
         ce_noise = np.sum(wprob * np.log((wprob + 1e-10)/u))
         ce_total = ce_signal + ce_noise
@@ -375,24 +375,23 @@ class Prior(object):
             Number of observations
         K : int
             Number of covariates
-        a : int
-            Lower bound on uniform distribution
-        b : int
-            Upper bound on uniform distribution
+        a : float
+            Mean in normal distribution of covariates
+        b : float
+            Standard deviation in normal distribution of covariates
         corr : int
             Correlated covariates
     
         """
         assert T > 0 and K > 0, 'inputs must be non-negative'
-        assert a >= 0 and b > 0, 'inputs must be non-negative'
-        assert b > a, 'a must be less than b'
+        assert b > 0, 'b must be non-negative'
         assert corr==0 or corr==1, 'corr misspecified'      
-        mu=1.0 if corr==0 else 90.0 # specify condition number  
-        temp = np.random.uniform(a, b, size=(T, K)) 
+        mu=10.0 if corr==0 else 90.0 # specify condition number  
+        temp = np.random.normal(a, b, size=(T, K))
         U, s, V = np.linalg.svd(temp, full_matrices=False)
         snew = np.ones(K)
-        snew[0] = np.sqrt(2.0/(1 + mu))
-        snew[K - 1] = np.sqrt(2.0*mu/(1 + mu))
+        snew[K - 1] = np.sqrt(2.0/(1 + mu))
+        snew[0] = np.sqrt(2.0*mu/(1 + mu))
         X = np.dot(U, np.dot(np.diag(snew), V))
         cn = np.linalg.cond(np.dot(X.T, X))
         assert np.allclose(mu, cn), 'condition number issue' 
@@ -718,7 +717,7 @@ if __name__ == "__main__":
     np.random.seed(12345)
 
     # user inputs
-    T = 10 # sample size: [10, 20, 50, 100, 500]
+    T = 100 # sample size: [10, 20, 50, 100, 250]
     N = 100 # number of replications
     parms_menu = [(0, [1., -5., 2.]),
                   (1, [1., -50., 2.]),
@@ -727,13 +726,13 @@ if __name__ == "__main__":
                   (4, [1., -50., 20., -3., 8., 6., -2., -7., 4., -1.]), 
                   (5, [10., -50., 20., -30., 80., 60., -20., -70., 40., -10.])]
     parms = parms_menu[0] # parameters values
-    a = 0 # lower bound on uniform dist. of covariates
-    b = 20 # upper bound on uniform dist. of covariates
+    a = 0 # mean in normal distribution of covariates
+    b = 1 # standard deviation in normal distribution of covariates
     corr = 0 # correlated covariates: [0, 1]
     rho = 2.0 # dispersion control parameter
     proc = 1 # number of coefficients receiving prior procedure: [1, 2]
     sd = 2 # standard deviation on model noise: [2, 5]
-    z = [-10., 0., 10.] # support for parameters
+    z = [-100., 0., 100.] # support for parameters
     x0 = np.zeros(T) # starting values
     path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
     #path = '/home/hh9467a/Output/'
