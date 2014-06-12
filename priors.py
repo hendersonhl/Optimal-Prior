@@ -297,14 +297,16 @@ class Prior(object):
         assert np.shape(q)[1] == 1, 'q dimension issue' 
         assert np.shape(u)[1] == 1, 'u dimension issue'          
         assert len(pprob) == len(q), "len(pprob) not equal to len(q)"  
-        assert len(wprob) == len(u), "len(wprob) not equal to len(u)"    
+        assert len(wprob) == len(u), "len(wprob) not equal to len(u)"          
+        ce_parm  = np.sum(pprob[3:6] * np.log((pprob[3:6] + 1e-10)/q[3:6]))              
         ce_signal = np.sum(pprob * np.log((pprob + 1e-10)/q))
         ce_noise = np.sum(wprob * np.log((wprob + 1e-10)/u))
         ce_total = ce_signal + ce_noise
+        assert type(ce_parm) == np.float64, 'ce_parm must be float'
         assert type(ce_signal) == np.float64, 'ce_signal must be float'
         assert type(ce_noise) == np.float64, 'ce_noise must be float'
         assert type(ce_total) == np.float64, 'ce_total must be float'
-        return np.array([[ce_signal, ce_noise, ce_total]])
+        return np.array([[ce_parm, ce_signal, ce_noise, ce_total]])
 
     def pprobs(self, lmda, X, q, z):
         """Returns probabilities on signal.
@@ -386,7 +388,7 @@ class Prior(object):
         assert T > 0 and K > 0, 'inputs must be non-negative'
         assert b > 0, 'b must be non-negative'
         assert corr==0 or corr==1, 'corr misspecified'      
-        mu=10.0 if corr==0 else 90.0 # specify condition number  
+        mu=1.0 if corr==0 else 100.0 # specify condition number  
         temp = np.random.normal(a, b, size=(T, K))
         U, s, V = np.linalg.svd(temp, full_matrices=False)
         snew = np.ones(K)
@@ -557,7 +559,7 @@ class Prior(object):
                     dev_ols.append('dev_ols' + str(i))
                 dev_ent.append('dev_ent')
                 dev_ols.append('dev_ols')
-                ce = ['ce_signal', 'ce_noise', 'ce_total']    
+                ce = ['ce_parm', 'ce_signal', 'ce_noise', 'ce_total']    
                 header = prior + ['labels'] + b + ols + dev_ent + dev_ols + ce \
                     + ['success']
                 f.write(','.join(header))
@@ -659,11 +661,15 @@ class Prior(object):
         # group by prior
         prior = [i for i in df.columns if i.startswith('prior')]
         grouped = df.groupby(prior) 
-        means = grouped.agg(np.mean) # aggregate by means                  
-        lst = [('dev_ent','ce_total', 'all'),('dev_ent','ce_total','means'),
-            ('dev_ent1','ce_total','all'),('dev_ent1','ce_total','means'),
+        means = grouped.agg(np.mean) # aggregate by means 
+        lst = [('dev_ent1','ce_parm', 'all'),('dev_ent1','ce_parm','means'),
+            ('dev_ent','ce_parm','all'),('dev_ent','ce_parm','means'),
             ('dev_ent','ce_signal', 'all'),('dev_ent','ce_signal','means'),
-            ('dev_ent1','ce_signal','all'),('dev_ent1','ce_signal','means')]
+            ('dev_ent','ce_total','all'),('dev_ent','ce_total','means')]                 
+        #lst = [('dev_ent','ce_total', 'all'),('dev_ent','ce_total','means'),
+        #    ('dev_ent1','ce_total','all'),('dev_ent1','ce_total','means'),
+        #    ('dev_ent','ce_signal', 'all'),('dev_ent','ce_signal','means'),
+        #    ('dev_ent1','ce_signal','all'),('dev_ent1','ce_signal','means')]
         npriors = len(means)
         marker = [tuple(np.random.uniform(0, 1, size=(1, 3))[0]) 
             for i in range(npriors)] # list of RGB tuples   
@@ -714,11 +720,11 @@ class Prior(object):
 if __name__ == "__main__":
 
     # set seed
-    np.random.seed(12345)
+    np.random.seed(321)
 
     # user inputs
-    T = 100 # sample size: [10, 20, 50, 100, 250]
-    N = 100 # number of replications
+    T = 100 # sample size: [10, 20, 50, 100, 500]
+    N = 1000 # number of replications
     parms_menu = [(0, [1., -5., 2.]),
                   (1, [1., -50., 2.]),
                   (2, [10., -50., 20.]),
@@ -729,10 +735,10 @@ if __name__ == "__main__":
     a = 0 # mean in normal distribution of covariates
     b = 1 # standard deviation in normal distribution of covariates
     corr = 0 # correlated covariates: [0, 1]
-    rho = 2.0 # dispersion control parameter
+    rho = 0.5 # dispersion control parameter
     proc = 1 # number of coefficients receiving prior procedure: [1, 2]
-    sd = 2 # standard deviation on model noise: [2, 5]
-    z = [-100., 0., 100.] # support for parameters
+    sd = 1 # standard deviation on model noise: [1, 5]
+    z = [-20., 0., 20.] # support for parameters
     x0 = np.zeros(T) # starting values
     path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
     #path = '/home/hh9467a/Output/'
