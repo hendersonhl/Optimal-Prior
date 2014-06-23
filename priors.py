@@ -143,7 +143,9 @@ class Prior(object):
         T = len(y)
         K = np.shape(X)[1]
         M = len(z)
-        q = (1.0/M)*np.ones(K*M)[:, np.newaxis]
+        q = (1.0/M)*np.ones(K*M)[:, np.newaxis] 
+        #maxiter=12 if T>100 else 45 # slack to large T 
+        #tol=1e-06 if T>100 else 1e-15 # slack to large T        
         coeffs, olss, dev_ents, dev_olss, ents, success = [],[],[],[],[],[]
         for prior in priors:
             toprint = [round(e, 2) for e in prior]
@@ -152,8 +154,18 @@ class Prior(object):
             q[M: (proc + 1)*M] = np.array(prior)[:, np.newaxis]
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
-            result = minimize(obj, x0, args=(q,), method='L-BFGS-B', jac=jac,
-                options={'ftol': 1e-14, 'gtol': 1e-14, 'maxiter': 200})
+            #result = minimize(obj, x0, args=(q,), method='L-BFGS-B', jac=jac,
+            #    options={'ftol': 1e-15, 'gtol': 1e-15, 'maxiter': 45})
+            #result = minimize(obj, x0, args=(q,), method='Newton-CG', jac=jac,
+            #    tol=1e-06, options={'maxiter': 12})
+            #result = minimize(obj, x0, args=(q,), method='CG', jac=jac,
+            #    tol=1e-06, options={'maxiter': 100})
+            #result = minimize(obj, x0, args=(q,), method='BFGS', jac=jac,
+            #    tol=1e-07, options={'maxiter': 35})
+            #result = minimize(obj, x0, args=(q,), method='SLSQP', jac=jac,
+            #    tol=1e-16, options={'maxiter': 35})
+            result = minimize(obj, x0, args=(q,), method='TNC', jac=jac,
+                tol=1e-12, options={'maxiter': 100})
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
             print 'Optimizer exited successfully: {}'.format(result.success)
             # get output
@@ -666,10 +678,6 @@ class Prior(object):
             ('dev_ent','ce_parm','all'),('dev_ent','ce_parm','means'),
             ('dev_ent','ce_signal', 'all'),('dev_ent','ce_signal','means'),
             ('dev_ent','ce_total','all'),('dev_ent','ce_total','means')]                 
-        #lst = [('dev_ent','ce_total', 'all'),('dev_ent','ce_total','means'),
-        #    ('dev_ent1','ce_total','all'),('dev_ent1','ce_total','means'),
-        #    ('dev_ent','ce_signal', 'all'),('dev_ent','ce_signal','means'),
-        #    ('dev_ent1','ce_signal','all'),('dev_ent1','ce_signal','means')]
         npriors = len(means)
         marker = [tuple(np.random.uniform(0, 1, size=(1, 3))[0]) 
             for i in range(npriors)] # list of RGB tuples   
@@ -720,17 +728,17 @@ class Prior(object):
 if __name__ == "__main__":
 
     # set seed
-    np.random.seed(321)
+    np.random.seed(123)
 
     # user inputs
-    T = 100 # sample size: [10, 20, 50, 100, 500]
-    N = 1000 # number of replications
-    parms_menu = [(0, [1., -5., 2.]),
-                  (1, [1., -50., 2.]),
-                  (2, [10., -50., 20.]),
-                  (3, [1., -5., 2., -3., 8., 6., -2., -7., 4., -1.]),
-                  (4, [1., -50., 20., -3., 8., 6., -2., -7., 4., -1.]), 
-                  (5, [10., -50., 20., -30., 80., 60., -20., -70., 40., -10.])]
+    T = 250 # sample size: [10, 20, 50, 100, 500]
+    N = 50 # number of replications
+    parms_menu = [(0, [1., -3., 2.]),
+                  (1, [1., -30., 2.]),
+                  (2, [10., -30., 20.]),
+                  (3, [1., -3., 2., -3., 8., 6., -2., -7., 4., -1.]),
+                  (4, [1., -30., 20., -3., 8., 6., -2., -7., 4., -1.]), 
+                  (5, [10., -30., 20., -30., 80., 60., -20., -70., 40., -10.])]
     parms = parms_menu[0] # parameters values
     a = 0 # mean in normal distribution of covariates
     b = 1 # standard deviation in normal distribution of covariates
@@ -738,9 +746,9 @@ if __name__ == "__main__":
     rho = 0.5 # dispersion control parameter
     proc = 1 # number of coefficients receiving prior procedure: [1, 2]
     sd = 1 # standard deviation on model noise: [1, 5]
-    z = [-20., 0., 20.] # support for parameters
+    z = [-10., 0., 10.] # support for parameters
     x0 = np.zeros(T) # starting values
-    path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
+    path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output(Temp)/'
     #path = '/home/hh9467a/Output/'
     
     # run experiment
