@@ -50,3 +50,85 @@ Results.xlsx
 *.out
 
 *.gz
+
+GME Code/Data/B0.dat
+
+GME Code/Data/beer.dat
+
+perm.py
+
+GME Code/SAS/smoking_vcl.sas
+
+GME Code/SAS/smoking.sas
+
+GME Code/SAS/Readme.docx
+
+GME Code/SAS/jasa96.sas
+
+GME Code/SAS/gen_data.sas
+
+GME Code/SAS/dice_ME_Dual.sas
+
+GME Code/SAS/beer_OLS.sas
+
+GME Code/SAS/beer_GME.sas
+
+GME Code/LIMDEP/Discrete_Choice_Smoking.lim
+
+GME Code/gams/Matrix_Balancing/Readme.docx
+
+GME Code/gams/Matrix_Balancing/Matrix_Balancing_Empirical_Example_1.gms
+
+GME Code/gams/Matrix_Balancing/Matrix3.gms
+
+GME Code/gams/Matrix_Balancing/Matrix2.gms
+
+GME Code/gams/Matrix_Balancing/LAB2_MATRIX.gpr
+
+GME Code/gams/GME_EXAMPLES/Linear_GME_example.gms
+
+GME Code/gams/GME_EXAMPLES/Linear_GME_example 1.gms
+
+GME Code/gams/GME_EXAMPLES/example.gpr
+
+GME Code/gams/GME_EXAMPLES/Beer_GME.gpr
+
+GME Code/gams/GME_EXAMPLES/beer_example.gms
+
+GME Code/gams/GME_EXAMPLES/beer_example(external).gms
+
+GME Code/gams/GME_EXAMPLES/Beer.gpr
+
+GME Code/gams/Classical_ME_Lab_1/Size Distribution Example.gms
+
+GME Code/gams/Classical_ME_Lab_1/Size Distribution Example 2.gms
+
+GME Code/gams/Classical_ME_Lab_1/Size Distribution Example 2 part B.gms
+
+GME Code/gams/Classical_ME_Lab_1/simpleols.gms
+
+GME Code/gams/Classical_ME_Lab_1/simpleols(external).gms
+
+GME Code/gams/Classical_ME_Lab_1/Readme.docx
+
+GME Code/gams/Classical_ME_Lab_1/LAB1_ME.gpr
+
+GME Code/gams/Classical_ME_Lab_1/Day1.gpr
+
+GME Code/gams/Classical_ME_Lab_1/Classical_ME_Example1.gms
+
+GME Code/gams/Classical_ME_Lab_1/Classical_ME_Dice_Example.gms
+
+GME Code/gams/Classical_ME_Lab_1/Classical_Dual_ME_Example2.gms
+
+GME Code/Data/table_xx.dat
+
+GME Code/Data/smoking.xls
+
+GME Code/Data/mydata.txt
+
+GME Code/Data/ex1.xls
+
+GME Code/Data/data.inc
+
+GME Code/Data/data.dat

@@ -144,8 +144,7 @@ class Prior(object):
         K = np.shape(X)[1]
         M = len(z)
         q = (1.0/M)*np.ones(K*M)[:, np.newaxis] 
-        maxiter=1000 if sd>1 else 100 # slack to large sd
-        tol=1e-04 if sd>1 else 1e-06 
+        maxiter=900 if sd>1 else 90 + 360*corr # slack to large sd/corr
         coeffs, olss, dev_ents, dev_olss, ents, success = [],[],[],[],[],[]
         for prior in priors:
             toprint = [round(e, 2) for e in prior]
@@ -154,22 +153,8 @@ class Prior(object):
             q[M: (proc + 1)*M] = np.array(prior)[:, np.newaxis]
             assert np.shape(q)[1] == 1, 'q dimension issue' 
             # fit model
-            ##########
-            #result = minimize(obj, x0, args=(q,), method='L-BFGS-B', jac=jac,
-            #    options={'ftol': 1e-15, 'gtol': 1e-15, 'maxiter': 35})
-            #########
             result = minimize(obj, x0, args=(q,), method='CG', jac=jac,
-                tol=tol, options={'maxiter': maxiter}) # IFFY
-            #result = minimize(obj, x0, args=(q,), method='SLSQP', jac=jac,
-            #    tol=1e-16, options={'maxiter': 35}) # IFFY
-            #result = minimize(obj, x0, args=(q,), method='L-BFGS-B', jac=jac,
-            #    options={'ftol': 1e-08, 'gtol': 1e-08, 'maxiter': 40})
-            #result = minimize(obj, x0, args=(q,), method='Newton-CG', jac=jac,
-            #    tol=1e-06, options={'maxiter': 12}) # NOPE
-            #result = minimize(obj, x0, args=(q,), method='BFGS', jac=jac,
-            #    tol=1e-07, options={'maxiter': 35})
-            #result = minimize(obj, x0, args=(q,), method='TNC', jac=jac,
-            #    tol=1e-12, options={'maxiter': 100}) # IFFY
+                tol=1e-06, options={'maxiter': maxiter}) 
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
             print 'Optimizer exited successfully: {}'.format(result.success)
             # get output
@@ -735,8 +720,8 @@ if __name__ == "__main__":
     np.random.seed(123)
 
     # user inputs
-    T = 250 # sample size: [10, 20, 50, 100, 500]
-    N = 50 # number of replications
+    T = 100 # sample size: [10, 20, 50, 100, 200]
+    N = 1000 # number of replications
     parms_menu = [(0, [1., -3., 2.]),
                   (1, [1., -30., 2.]),
                   (2, [10., -30., 20.]),
@@ -746,10 +731,10 @@ if __name__ == "__main__":
     parms = parms_menu[0] # parameters values
     a = 0 # mean in normal distribution of covariates
     b = 1 # standard deviation in normal distribution of covariates
-    corr = 0 # correlated covariates: [0, 1]
+    corr = 1 # correlated covariates: [0, 1]
     rho = 0.5 # dispersion control parameter
     proc = 1 # number of coefficients receiving prior procedure: [1, 2]
-    sd = 5 # standard deviation on model noise: [1, 5]
+    sd = 1 # standard deviation on model noise: [1, 5]
     z = [-10., 0., 10.] # support for parameters
     x0 = np.zeros(T) # starting values
     path = '/Users/hendersonhl/Documents/Articles/Optimal-Prior/Output/'
