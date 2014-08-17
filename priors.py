@@ -12,16 +12,7 @@ Key notation:
     z: Parameter support vector (M-by-1)
     v: Noise support vector (J-by-1)
     lmda: Lagrange multipliers (T-by-1)
-    
-Results:     
-    (1) When support is too narrow our procedure is effective and improves
-    upon GME. However, in this case we do not outperform OLS. 
-    (2) When support is appropriately specified our procedure is effective 
-    and outperforms both GME and OLS.
-    (3) When support is very wide our procedure is ineffective as the data
-    tends to overwhelm the prior. While we typically beat OLS in this 
-    scenario we do not necessarily beat GME. 
-        
+            
 """
 
 import numpy as np
@@ -156,6 +147,9 @@ class Prior(object):
             result = minimize(obj, x0, args=(q,), method='CG', jac=jac,
                 tol=1e-06, options={'maxiter': maxiter}) 
             assert np.isfinite(result.x).all() == True, 'result.x not finite'
+            if result.success==True: # check derivatives only if successful
+                jchk = self.jacobian(result.x, q, u, y, X, z, v)
+                assert np.allclose(jchk, 0, atol=1e-05) == True, 'jacobian issue'
             print 'Optimizer exited successfully: {}'.format(result.success)
             # get output
             pprob = self.pprobs(result.x, X, q, z)
@@ -720,15 +714,15 @@ if __name__ == "__main__":
     np.random.seed(123)
 
     # user inputs
-    T = 100 # sample size: [10, 20, 50, 100, 200]
+    T = 50 # sample size: [10, 20, 50, 100, 200]
     N = 1000 # number of replications
     parms_menu = [(0, [1., -3., 2.]),
-                  (1, [1., -30., 2.]),
-                  (2, [10., -30., 20.]),
-                  (3, [1., -3., 2., -3., 8., 6., -2., -7., 4., -1.]),
-                  (4, [1., -30., 20., -3., 8., 6., -2., -7., 4., -1.]), 
-                  (5, [10., -30., 20., -30., 80., 60., -20., -70., 40., -10.])]
-    parms = parms_menu[0] # parameters values
+                  (1, [1., -6., 2.]),
+                  (2, [2., -6., 4.]),
+                  (3, [1., -3., 2., 0., 4., -1., -2.]),
+                  (4, [1., -6., 2., 0., 4., -1., -2.]), 
+                  (5, [2., -6., 4., 0., 8., -2., -4.])]
+    parms = parms_menu[2] # parameters values
     a = 0 # mean in normal distribution of covariates
     b = 1 # standard deviation in normal distribution of covariates
     corr = 1 # correlated covariates: [0, 1]
