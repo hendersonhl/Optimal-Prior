@@ -2,51 +2,18 @@
 %%%%%%%%%%%% Preamble %%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Word target: 2,500 words
+% Word target: 2,000 words
 
 % Outline:
-% I. Introduction (400 words) (~379 currently)
+% I. Introduction (300 words) (~306 currently)
 % II. GCE estimator (450 words) (~447 currently)
-% III. Nested GCE estimator (350 words) (~376 currently)
+% III. Nested GCE estimator (350 words) (~376 currently) 
 % IV. Sampling Experiments (450 words) (~444 currently)
 % V. Results (500 words) (~671 currently)
 % VI. Conclusions (250 words)
 
-% (Leave) 1. Title 
-% (Good) 2. The GME section - I would reduce to the minimum. only essential 
-% info that those who are not familiar can understand 
-% (Good) 3. footnote. My usual style is to minimize ...
-% (Good) 4. Intuition: need to explain why we did it and why it works. Simply 
-% stated: we don't know the priors. If we do, we don't need that method. So 
-% whenever we work with data that we have no clue of the priors, we can use 
-% our approach which actually covers most possible priors (it covers a wide 
-% range of priors). Then, in line with Info theory we choose the solution that 
-% minimizes info distance between solution and priors. that explains why the 
-% objective value serves as our best statistic (and highly correlated with the MSE)..... 
-% 5. Punch line (conclusion/discussion) 
-% a) better estimates of small sample.... 
-% b)easy to run, code and apply... 
-% c) keeps with logic of minimal a-priori info (of course if we know the prior 
-% we don't need this..) 
-% d) implication-application: wherever we would use a GME-GCE or other IT 
-% method - and for all estimation problems where we thing we can improve on 
-% current methods 
-%
-% Other specific from text: 
-% (Good) Abstract. need to fix (e.g., last sentence) 
-% (Good) Section 2. Too long - reduce. Maybe in Appendix??? not sure 
-% (Leave) Section 3 first paragraph - need to refine 
-% (Good) Section 5. Statements like improvement decreases with sample size... be more 
-% careful. Of course it does. But this is expected for all estimators (as sample size 
-% increases, estimates must improve...) 
-% Tables - Figures (important): Every table/figure needs a text explanation 
-% under/above that table. In quite detail so reader can understand. All needs to 
-% be defined. Similarly, every Table/Figure that we refer to in the text needs to 
-% be explained as well in the text, including definitions of the quantities shown etc. 
-% (TO DO) Add results from new experiments
-
 % Declare document class and miscellaneous packages
-\documentclass[english]{article}
+\documentclass{elsarticle}
 \usepackage{natbib}
 \usepackage{amsmath}
 \usepackage{mathrsfs}
@@ -64,7 +31,6 @@
 \usepackage{afterpage}
 \usepackage[all]{nowidow}
 \usepackage{listings}
-%\usepackage{fullpage}
 \urlstyle{rm}
 
 %Hyper-references
@@ -72,61 +38,48 @@
 \hypersetup{colorlinks, citecolor=black, filecolor=black, linkcolor=black, 
 urlcolor=black, pdftex}
 
-% Title page
+% Begin document and frontmatter
+\begin{document}
+\begin{frontmatter}
+
+% Title
 \title{Improving Small Sample Performance of the Generalized Cross 
 Entropy Estimator}
-\author{
-Heath Henderson\thanks{Corresponding author; Iowa State University,
-Department of Economics, 260 Heady Hall, Ames, IA 50011; 
-Tel: +1 515 294 8122;  Email: heathh@iastate.edu.}\\
-\textit{Department of Economics} \\
-\textit{Iowa State University} \\
-\\
-Amos Golan \\
-\textit{Department of Economics}\\
-\textit{American University} \\
-\\
-Skipper Seabold \\
-\textit{Department of Economics}\\
-\textit{American University}
-\\ \\
-}
 
-\date{\today}
+% Authors and affiliation
+\author[hh]{Heath Henderson\corref{cauthor}}
+\cortext[cauthor]{Corresponding author; 166D Heady Hall, Ames, IA 50011; 
+Tel: +1 515 294 8122;  Email: \url{heathh@iastate.edu}.}
+\author[ag]{Amos Golan}
+\author[ss]{Skipper Seabold}
 
-\begin{document}
+\address[hh]{Department of Economics, Iowa State University}
+\address[ag]{Department of Economics, American University}
+\address[ss]{Department of Economics, American University}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%% Title Page and Abstract %%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\begin{titlepage}
-\maketitle
-
+% Abstract
 \begin{abstract}
-In the estimation of linear and non-linear models, the generalized maximum 
-entropy (GME) estimator has been found to outperform its traditional 
-counterparts.
-The generalized cross entropy (GCE) estimator is a generalization of GME
-that permits the incorporation of prior information.
-While informative priors can improve the performance of the GCE estimator 
-relative to GME, prior information is often missing and achieving improved 
-performance implies choosing among a possibly infinite number of priors.
-We thus develop a nested GCE estimator that utilizes the loss-minimizing or 
-best-approximating reference distribution to improve upon the small sample
-performance of the GCE estimator. \\
-~\\
-\textit{Key words}: Generalized maximum entropy; Generalized cross 
-entropy; Prior information\\
-~ \\
-\textit{JEL codes}: C13; C14  
+Prior information can improve inference, but in the social sciences such
+information is commonly lacking.
+In this paper, we develop a novel way to identify prior information within 
+an information-theoretic estimation framework. 
+Specifically, we construct a generalized cross entropy estimator that considers a 
+wide range of priors and then develop a simple statistic to choose the optimal 
+model. 
+We find that the optimal model is that which minimizes the informational 
+distance between a given prior and the observed information. 
+Through a large number of sampling experiments, we demonstrate the 
+finite-sample performance gains of our method relative to classical competitors.
 \end{abstract}
-\thispagestyle{empty}
-\end{titlepage}
-\newpage
 
-% Set citations without comma between author and year
-\bibpunct{(}{)}{;}{a}{}{,}
+% Keywords and JEL codes
+\begin{keyword}
+Entropy \sep Information \sep Maximum entropy \sep 
+Generalized maximum entropy \sep Generalized cross entropy \sep Priors \\
+\textit{JEL codes}: C13 \sep C14  
+\end{keyword}
+
+\end{frontmatter}
 
 \doublespacing
 
@@ -137,55 +90,45 @@ entropy; Prior information\\
 \section{Introduction}
 \label{sec: intro}
 
-The generalized maximum entropy (GME) estimator seeks to recover the 
-unknown probability distributions that characterize a given dataset by 
-maximizing the Shannon (\citeyear{shannon1948}) entropy or information 
-measure subject to stochastic moment conditions and proper probability 
-constraints.
-%\footnote{The estimator is termed ``generalized'' because it is a 
-%generalization of classical maximum entropy (ME) formalism, which treats
-%moment conditions as non-stochastic \citep{jaynes1957a, jaynes1957b}.}
-In the estimation of both linear and non-linear models, the GME estimator
-has been found to outperform its traditional counterparts (e.g.\ ordinary 
-least squares and maximum likelihood estimators), especially in the context 
-of ill-posed, ill-conditioned, or noisy problems \citep{golan1996}.
-As such, the GME estimator has witnessed widespread application in the 
-social and natural sciences.
+Information-theoretic (IT) methods of inference were developed as a means to
+relax classical statistical assumptions in the estimation of both linear and 
+non-linear models.
+The generalized maximum entropy (GME) estimator is a leading IT method 
+that assumes limited knowledge of statistical error structure and treats both
+signal and noise as unknown quantities.
+To retrieve the unknown quantities in an inherently under-determined problem, 
+the GME estimator builds on maximum entropy formalism \citep{jaynes1957a} 
+and uses Boltzmann-Shannon entropy \citep{shannon1948} as the objective 
+functional.
+Primarily in the context of ill-posed and ill-behaved problems, the GME 
+estimator has been found to outperform its traditional counterparts 
+(e.g.\ ordinary least squares and maximum likelihood) and has thus
+witnessed widespread application in the social and natural sciences 
+\citep{golan1996}. 
 
-The generalized cross entropy (GCE) estimator instead uses the 
-Kullback-Leibler (\citeyear{kullback1951}) divergence metric to minimize the 
-discrepancy between the posterior probabilities and the researcher's chosen 
-priors.
-For uniform priors, it can be shown that GME and GCE formalism yield
-identical solutions, and thus GCE is a generalization of the GME estimator
-\citep{golan1996}.
-While more informative reference distributions can improve the performance 
-of the GCE estimator relative to GME,%
-\footnote{For example, see \citet{heckelei2003}. 
-It is also important here to clarify our use of the term ``informative.''
-Shannon entropy measures the expected informational content or 
-uncertainty associated with a random variable.
-The measure reaches a maximum for uniformly distributed random 
-variables, which corresponds to a state of complete ignorance.
-The measure equals zero when one of the probabilities in the probability 
-mass function is exactly one, which corresponds to a state of perfect 
-certainty.
-It is in this sense that non-uniform priors are more informative.
-See \citet{golan2008} for further discussion. \label{fn: info}}
-such prior information is often missing and achieving improved performance 
-implies choosing among a possibly infinite number of prior probability 
-distributions.
-We thus identify a general basis for selecting among alternative reference 
-distributions and develop a nested GCE (NGCE) estimator that improves 
-upon the small sample performance of the GCE estimator. 
+In the presence of prior information, the generalized cross entropy (GCE) 
+estimator instead uses Kullback-Liebler divergence \citep{kullback1951} 
+to minimize the informational distance between the posterior probabilities 
+and the researcher's chosen priors.
+While for uniform priors the GME and GCE estimators are identical,  
+more informative reference distributions can improve performance of the 
+GCE estimator relative to GME. 
+However, prior information is often missing and achieving improved 
+performance implies choosing among a possibly infinite number of priors.
+We thus propose a general framework for selecting among alternative 
+reference distributions by using (minimal) informational distance as a metric 
+to select among a wide range of priors within a GCE framework.
+Through a large number of sampling experiments, we demonstrate the 
+finite-sample performance gains of our method relative to GME and 
+classical competitors.
 
-In what follows, Section \ref{sec: gce} discusses GCE formalism and 
-Section \ref{sec: ngce} outlines our NGCE estimator.
-Section \ref{sec: mce} details the sampling experiments through which we
-compare the performance of our estimation strategy to the leading 
-alternative estimators.
-Section \ref{sec: results} elaborates upon the results of the 
-experiments and Section \ref{sec: conc} concludes. 
+In Section \ref{sec: gce} we provide a brief summary of GCE formalism and 
+in Section \ref{sec: ngce} we outline our estimator. 
+Section \ref{sec: mce} details the sampling experiments through which we 
+compare the performance of our estimation strategy to the leading competing 
+estimators. 
+In Section \ref{sec: results} we discuss results and in Section \ref{sec: conc} 
+we conclude. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%% The GCE Estimator  %%%%%%%%%
@@ -304,7 +247,6 @@ While in such situations priors are often specified as uniform (i.e.\
 $\mathbf{q}=1/M$ and $\mathbf{u}=1/J$), more informative 
 reference distributions can enhance small sample performance, especially 
 for ill-posed, ill-conditioned, or noisy problems.
-%\footnote{See footnote \ref{fn: info}.}
 Accordingly, in this section we describe a general method for selecting among 
 alternative reference distributions and outline an NGCE estimator in an 
 effort to improve upon the small sample performance of the GCE estimator. 
@@ -420,8 +362,6 @@ experimental specifications.
 That is, the experiments are conducted with five alternative sample sizes, 
 where for each sample size we consider a baseline, well-behaved case along
 with noisy and collinear cases.
-%\footnote{The sampling experiments were implemented in Python 
-%2.7.3.}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%% Results %%%%%%%%%%%%%%
@@ -704,11 +644,9 @@ Experiment & \multicolumn{1}{c}{NGCE} &
 \cleardoublepage
 \singlespacing
 
-%Declare the style of the bibliography
-\bibliographystyle{au-cms}
-
-%Specify the file to use
+%Declare the style and file to use
+\section*{References}
+\bibliographystyle{model5-names}\biboptions{authoryear}
 \bibliography{/Users/hendersonhl/Documents/References}
-\newpage
 
 \end{document}
